@@ -7,6 +7,8 @@ import { CourseGame } from '../src/course-game.js';
 test('the local library contains all 41 rules and four annexes without active or external content',()=>{
   assert.deepEqual(RULE_TEXT.map(r=>r.id),Array.from({length:41},(_,i)=>i+1));
   assert.equal(ANNEX_TEXT.length,4);
+  assert.match(ANNEX_TEXT[0].title,/Расположение/);
+  assert.match(ANNEX_TEXT[3].title,/бедствия/);
   for(const rule of [...RULE_TEXT,...ANNEX_TEXT]){
     assert.ok(rule.title && rule.text.length>60 && rule.html.length>60);
     assert.doesNotMatch(rule.html,/<(?:script|iframe|img|style)|\bon\w+=|href=["']https?:|rulecomm/);
