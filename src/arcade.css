@@ -10,3 +10,6 @@
 @media(max-width:1080px) and (min-width:761px){.helm-controls{grid-template-columns:1fr;gap:12px}}
 @media(max-width:760px){.arcade-orders{grid-column:1;grid-row:3!important}.helm-controls{grid-column:1;grid-row:2;grid-template-columns:1fr 150px;gap:22px;padding:16px 20px}.helm-row{gap:10px}.helm-row button{min-width:59px;font-size:11px}.radar-picks{grid-column:1;grid-row:2}.helm-controls label{font-size:10px}.helm-controls output{font-size:14px}}
 @media(max-width:560px){.helm-controls{grid-template-columns:1fr;gap:13px}.helm-controls input{min-height:32px}.helm-row button{height:32px}.helm-controls small{font-size:9px}}
+
+.arcade-play.is-brief .bridge-status,.arcade-play.is-brief .bridge-instruments,.arcade-play.is-brief .token-palette,.arcade-play.is-brief .blast-history,.arcade-play.is-brief .whistle-pad,.arcade-play.is-brief .keyboard-hint,.arcade-play.is-brief .bearing-log{display:none}
+@media(max-width:760px){.arcade-play.is-brief .arcade-orders{grid-row:1!important}.arcade-play.is-brief .arcade-water{grid-row:2}.arcade-play.is-brief .helm-controls,.arcade-play.is-brief .radar-picks{grid-row:3}.arcade-play.is-brief .arcade-orders h2{margin-top:8px}.arcade-play.is-brief .arcade-orders .arcade-order-actions{margin-top:0}.arcade-play.is-brief .arcade-orders .arcade-hint{margin-top:0}}

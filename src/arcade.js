@@ -43,7 +43,7 @@ export class Arcade {
   this.last=performance.now();this.draw();this.updateHUD();this.frame=requestAnimationFrame(t=>this.tick(t));
  }
  action(action){const s=this.state;if(!s)return;
-  if(action==='begin'){s.phase='running';this.changed();}
+  if(action==='begin'){s.phase='running';this.changed();document.querySelector('.arcade-water')?.scrollIntoView({block:'start',behavior:'smooth'});}
   if(action==='pause')this.pause();
   if(action==='retry')this.start(s.type,s.index,true);
   if(action==='next'){if(s.index+1===GAME_TYPES[s.type].items.length)this.home();else this.start(s.type,s.index+1);}
@@ -82,7 +82,7 @@ export class Arcade {
   }
   if(s.type==='lookout'){
    const log=document.querySelector('#bearing-log');const html=`<table><caption>${s.samples.length} / 3 наблюдения</caption><thead><tr><th>Цель</th>${s.samples.map((v,i)=>`<th>${i+1}: ${Math.round(v.time)} с</th>`).join('')}</tr></thead><tbody>${['A','B','C'].map(id=>`<tr><th>${id}</th>${s.samples.map(v=>{const b=v.targets.find(t=>t.id===id);return `<td>${Math.round(b.bearing)}°<small>${Math.round(b.range)} м</small></td>`;}).join('')}</tr>`).join('')}</tbody></table><p id="bearing-status" role="status">${s.samples.length>=3?'Отметьте опасные цели и завершите наблюдение.':s.samples.length&&s.time-s.samples.at(-1).time<10?`Следующее наблюдение через ${Math.ceil(10-s.time+s.samples.at(-1).time)} с`:'Можно снять пеленги всех целей.'}</p>`;
-   if(log&&log.innerHTML!==html)log.innerHTML=html;const observe=document.querySelector('[data-arcade="observe"]');if(observe)observe.disabled=s.phase!=='running'||s.paused||s.samples.length>=3||(s.samples.length>0&&s.time-s.samples.at(-1).time<9.9);
+   if(log&&log.innerHTML!==html)log.innerHTML=html;const observe=document.querySelector('[data-arcade="observe"]');const complete=document.querySelector('[data-arcade="check"]');if(complete)complete.disabled=s.phase!=='running'||s.paused||s.samples.length<3;if(observe)observe.disabled=s.phase!=='running'||s.paused||s.samples.length>=3||(s.samples.length>0&&s.time-s.samples.at(-1).time<9.9);
   }
  }
  position(x,y){return {x:450+x*.52,y:322-y*.52};}
