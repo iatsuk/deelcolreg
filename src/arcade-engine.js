@@ -7,7 +7,7 @@ export const vector=(h,s)=>({x:Math.sin(h*Math.PI/180)*s,y:Math.cos(h*Math.PI/18
 const ship=(x,y,h,s)=>({x,y,h,s});
 const common='Два механических судна на ходу, на виду друг у друга. Опасность столкновения установлена. Просторная акватория, свободное место для манёвра; особых обстоятельств нет.';
 export const VOYAGES=[
-  {id:'headon',title:'Встреча нос к носу',tag:'Встречные курсы',rule:14,brief:common,goal:'Разойдитесь левыми бортами. Измените курс заблаговременно и заметно.',own:ship(0,-420,0,6),target:ship(0,420,180,6),autoAt:23,autoTurn:35,duration:110,lesson:'При встрече прямо или почти прямо каждое механическое судно изменяет курс вправо. Поворот должен быть заметным и своевременным.',hint:'Ваш нос смотрит вверх. Поворот вправо направит его к востоку.'},
+  {id:'headon',title:'Встреча нос к носу',tag:'Встречные курсы',rule:14,brief:common,goal:'Разойдитесь левыми бортами. Измените курс заблаговременно и заметно.',own:ship(0,-420,0,6),target:ship(0,420,180,6),autoAt:23,autoTurn:35,duration:110,lesson:'При встрече прямо или почти прямо каждое механическое судно изменяет курс вправо. Поворот должен быть заметным и своевременным.',hint:'Ориентируйтесь по носу своего судна. Поворот вправо отсчитывается от вашего курса, а не от края экрана.'},
   {id:'crossing',title:'Судно справа',tag:'Пересечение курсов',rule:15,brief:common,goal:'Уступите дорогу и пройдите за кормой другого судна. Можно изменить курс, уменьшить ход или сочетать эти действия.',own:ship(0,-420,0,6),target:ship(420,0,270,6),duration:150,lesson:'Видите другое механическое судно справа — уступайте. Если позволяют обстоятельства, избегайте пересечения его курса по носу. Проверяйте результат до полного расхождения.',hint:'Заметный поворот вправо или раннее снижение скорости дают судну пройти впереди.'},
   {id:'standon',title:'Судно слева',tag:'Сохраняем курс',rule:17,brief:common+' Другое судно своевременно предпринимает достаточное действие, чтобы уступить вам.',goal:'Проведите судно через расхождение, сохранив курс и скорость. Наблюдайте за действиями уступающего.',own:ship(0,-420,0,6),target:ship(-420,0,90,6),autoAt:20,autoTurn:45,duration:115,lesson:'Пока уступающее судно действует надлежащим образом, сохраняйте курс и скорость. При его бездействии правило 17 предусматривает другие стадии: сохранение курса не означает ожидание столкновения.',hint:'Не нужно маневрировать одновременно с судном, которое уже правильно уступает.'},
   {id:'standon-late',title:'Он не уступает',tag:'Наблюдение и действие',rule:17,brief:common+' Вы сохраняете курс и скорость. После нескольких наблюдений станет очевидно, действует ли уступающее судно.',goal:'Сначала наблюдайте. Когда станет очевидно, что судно не уступает, помогите избежать столкновения своим манёвром.',own:ship(0,-420,0,6),target:ship(-420,0,90,6),duration:120,lesson:'Когда становится очевидно, что уступающее судно не действует надлежащим образом, сохраняющее курс судно может действовать само. В этой ситуации избегайте поворота влево в сторону судна слева. Если действия одного уступающего уже недостаточны, действие становится обязательным.',hint:'Дождитесь подтверждения по наблюдениям, затем заметно поверните вправо. Секунды здесь — условное игровое время.'},
@@ -16,8 +16,13 @@ export const VOYAGES=[
   {id:'channel',title:'Свой край фарватера',tag:'Узкость',rule:9,brief:'Механическое судно следует на север по прямому узкому проходу. Осадка позволяет держаться у правой внешней границы. Берега обозначены, течение сносит влево.',goal:'Пройдите к северным воротам, держась настолько близко к правой границе, насколько безопасно и практически возможно.',own:ship(125,-370,0,4),target:null,duration:220,current:{x:-.35,y:0},lesson:'В узкости или на фарватере держитесь внешней границы с правого борта настолько близко, насколько безопасно и практически возможно. Учитывайте снос и границы прохода.',hint:'Правый край — справа от направления движения, здесь на востоке. Небольшая поправка вправо компенсирует снос.'},
   {id:'fog',title:'Цель в тумане',tag:'Ограниченная видимость',rule:19,brief:'Вы идёте с безопасной для этой учебной обстановки скоростью. Судно обнаружено только радаром впереди траверза справа, визуального контакта нет. Это не обгон. Радиолокационная прокладка установила опасность столкновения.',goal:'Примите заблаговременное действие. По возможности избегайте изменения курса влево для этой цели.',own:ship(0,-420,0,6),target:ship(420,0,270,6),duration:150,radar:true,lesson:'Без визуального контакта применяется правило ограниченной видимости, а не обычная пара «уступающее — сохраняющее курс». Для цели впереди траверза, кроме обгоняемого, по возможности избегайте поворота влево. Безопасная скорость и готовность двигателей обязательны.',hint:'Наблюдайте радиолокационную отметку. Ранний поворот вправо или достаточное снижение хода позволяют разойтись.'},
 ];
-export function createVoyage(id){
- const m=VOYAGES.find(v=>v.id===id)||VOYAGES[0];
+const rotatePoint=(p,degrees)=>{const r=degrees*Math.PI/180;return {...p,x:p.x*Math.cos(r)+p.y*Math.sin(r),y:-p.x*Math.sin(r)+p.y*Math.cos(r)};};
+const localPoint=(p,heading)=>rotatePoint(p,-heading);
+export function createVoyage(id,rotation=0){
+ const base=VOYAGES.find(v=>v.id===id)||VOYAGES[0];
+ rotation=base.id==='channel'?0:angle(rotation);
+ const rotated=p=>p?{...rotatePoint(p,rotation),h:angle(p.h+rotation)}:null;
+ const m={...base,own:rotated(base.own),target:rotated(base.target),rotation};
  return {mission:m,own:{...m.own},target:m.target?{...m.target}:null,time:0,command:m.own.h,speed:m.own.s,phase:'brief',paused:false,minRange:Infinity,trail:[],otherTrail:[],actions:[],auto:false,passedBehind:false,violations:new Set(),nextTrail:0};
 }
 export function commandVoyage(s,heading,speed){
@@ -43,7 +48,8 @@ export function stepVoyage(s,dt){
   const tv=vector(t.h,t.s);t.x+=tv.x*dt;t.y+=tv.y*dt;
   const distance=Math.hypot(t.x-o.x,t.y-o.y);s.minRange=Math.min(s.minRange,distance);
   if(distance<38)return finish(s,false,'Суда вошли в зону столкновения. Действие нужно начинать раньше и проверять его результат.');
-  if(['crossing','fog'].includes(m.id)&&o.y>=0&&!s.crossed){s.crossed=true;s.passedBehind=o.x>t.x+40;}
+  const ownLocal=localPoint(o,m.own.h),targetLocal=localPoint(t,m.own.h);
+  if(['crossing','fog'].includes(m.id)&&ownLocal.y>=0&&!s.crossed){s.crossed=true;s.passedBehind=ownLocal.x>targetLocal.x+40;}
  }
  const deviation=turn(o.h,m.own.h);
  if(['standon','overtaken'].includes(m.id)&&(Math.abs(deviation)>7||Math.abs(o.s-m.own.s)>.65))s.violations.add('hold');
@@ -63,7 +69,8 @@ export function stepVoyage(s,dt){
   const av=vector(o.h,o.s),bv=vector(t.h,t.s);
   const separating=(t.x-o.x)*(bv.x-av.x)+(t.y-o.y)*(bv.y-av.y)>0;
   const range=Math.hypot(t.x-o.x,t.y-o.y);
-  const overtakingDone=m.id==='overtake'?o.y>t.y+95:m.id==='overtaken'?t.y>o.y+95:true;
+  const ownAlong=localPoint(o,m.own.h).y,targetAlong=localPoint(t,m.own.h).y;
+  const overtakingDone=m.id==='overtake'?ownAlong>targetAlong+95:m.id==='overtaken'?targetAlong>ownAlong+95:true;
   if(separating&&range>220&&overtakingDone&&s.minRange<650&&(!['crossing','fog'].includes(m.id)||s.crossed))return evaluateVoyage(s);
  }
  if(s.time>=m.duration)return m.id==='channel'?finish(s,false,'Северные ворота не достигнуты. Продолжайте движение и учитывайте снос.'):evaluateVoyage(s);
@@ -78,7 +85,7 @@ export function evaluateVoyage(s){
  if(id==='headon'&&(!early||!starboard))return finish(s,false,'Безопасного расстояния недостаточно: при встрече требовался ранний заметный поворот вправо.');
  if(['crossing','fog'].includes(id)&&(!early||!s.crossed||!s.passedBehind))return finish(s,false,'Рейс не завершён за кормой цели. Уступите раньше, затем проследите расхождение до конца.');
  if(id==='standon-late'&&!actions.some(a=>a.time>=25&&a.turn>=20))return finish(s,false,'После подтверждения бездействия уступающего судна требовалась ваша помощь в предотвращении столкновения.');
- if(id==='overtake'&&s.own.y<s.target.y+95)return finish(s,false,'Обгон ещё не завершён: обгоняемое судно должно остаться позади.');
+ if(id==='overtake'&&localPoint(s.own,s.mission.own.h).y<localPoint(s.target,s.mission.own.h).y+95)return finish(s,false,'Обгон ещё не завершён: обгоняемое судно должно остаться позади.');
  return finish(s,true,'Суда разошлись. Манёвр соответствует условиям задачи, вы проконтролировали результат.');
 }
 

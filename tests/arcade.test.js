@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { VOYAGES,LANTERNS,WHISTLES,LOOKOUT_ROUNDS,createVoyage,stepVoyage,commandVoyage,lookoutAt,stepLookout,gradeLantern,gradeWhistle,loadArcade,saveArcade,ARCADE_KEY,turn } from '../src/arcade-engine.js';
 import {arcadeHub,arcadeMarkup} from '../src/arcade-pages.js';
 import {COURSE_CARDS} from '../src/course.js';
-function sail(id,actions=[]){const s=createVoyage(id);s.phase='running';const pending=[...actions];for(let i=0;i<5000&&s.phase==='running';i++){while(pending.length&&s.time>=pending[0].at){const a=pending.shift();commandVoyage(s,a.h,a.speed??s.speed);}stepVoyage(s,.1);}assert.equal(s.phase,'result');return s;}
+function sail(id,actions=[],rotation=0){const s=createVoyage(id,rotation);s.phase='running';const pending=[...actions];for(let i=0;i<5000&&s.phase==='running';i++){while(pending.length&&s.time>=pending[0].at){const a=pending.shift();commandVoyage(s,s.mission.own.h+a.h,a.speed??s.speed);}stepVoyage(s,.1);}assert.equal(s.phase,'result');return s;}
 
 test('all helm missions can be completed by actions that respect their conditions',()=>{
  const routes=[['headon',35,1],['crossing',40,1],['crossing',0,1,3],['standon',0,1],['standon-late',35,28],['overtake',30,1],['overtake',-30,1],['overtaken',0,1],['channel',5,1],['fog',40,1],['fog',0,1,3]];
@@ -58,4 +58,14 @@ test('every game has a complete briefing and debrief without multiple-choice ans
   const state={time:0,samples:[]};
   for(let i=0;i<3;i++){stepLookout(state,120);assert.equal(state.time,(i+1)*10);state.samples.push({time:state.time});}
   stepLookout(state,120);assert.equal(state.time,30);
+ });
+
+ test('rotated voyages preserve duties and actual passing geometry',()=>{
+  for(const rotation of [45,90,180,270]){
+   for(const [id,h,at,speed] of [['headon',35,1],['crossing',40,1],['crossing',0,1,3],['standon',0,1],['standon-late',35,28],['overtake',-30,1],['overtaken',0,1],['fog',40,1]]){
+    const result=sail(id,[{at,h,speed}],rotation);assert.equal(result.success,true,`${id} at ${rotation}: ${result.reason}`);
+   }
+   assert.equal(sail('headon',[{at:1,h:-35}],rotation).success,false);
+   assert.equal(sail('crossing',[],rotation).success,false);
+  }
  });
