@@ -31,6 +31,16 @@ test('every rule and annex has a question; modules have no orphan or ambiguous a
   for(const module of COURSE_MODULES)assert.ok(cardsForModule(module.id).length>=2);
 });
 
+test('verified international amendments and interval limits survive source imports',()=>{
+  assert.match(RULE_TEXT.find(r=>r.id===31).text,/экраноплан/);
+  assert.match(RULE_TEXT.find(r=>r.id===33).text,/20 м и более — колоколом/);
+  assert.doesNotMatch(RULE_TEXT.find(r=>r.id===35).text,/другой эффективный звуковой сигнал через промежутки не менее/);
+  assert.match(ANNEX_TEXT[0].text,/был не менее 27°/);
+  assert.doesNotMatch(ANNEX_TEXT[2].text,/200 мм для судов длиной 12/);
+  assert.match(ANNEX_TEXT[3].text,/SOS/);
+  assert.doesNotMatch(ANNEX_TEXT[3].text,/Yes|Charly|EPIRB \(/);
+});
+
 test('course mastery persists, clears on a mistake, and rejects corrupted storage',()=>{
   let progress={};const id=COURSE_CARDS[0].id;
   for(let i=0;i<3;i++)progress=recordCourseAnswer(progress,id,true);

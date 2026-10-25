@@ -43,3 +43,7 @@ gh api --method PUT repos/iatsuk/deelcolreg/pages -F https_enforced=true
 - [Custom domain](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).
 - [Custom workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 - [HTTPS](https://docs.github.com/en/pages/getting-started-with-github-pages/securing-your-github-pages-site-with-https).
+
+## Состояние на 25.10.2026
+
+Репозиторий публичный. Первый workflow тестирования и публикации завершился успешно. DNS `colreg.deelstuff.com CNAME iatsuk.github.io` проверен через публичный и авторитетный DNS-сервер. Custom domain подключён; GitHub одобрил сертификат, `https_enforced=true`. Рабочий адрес: https://colreg.deelstuff.com/.
