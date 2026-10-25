@@ -1,3 +1,6 @@
+import { CourseGame, playSignal, stopSignal } from './course-game.js';
+import { COURSE_CARDS } from './course.js';
+import { libraryMarkup, libraryTOC, fullRuleMarkup, getDocument, courseMarkup, drillMarkup, informationMarkup } from './pages.js';
 import { CONDITIONS, RULES, SCENARIOS, SOURCES, TOPICS } from './content.js';
 import { SESSION_LENGTH, STORAGE_KEY, emptyProgress, loadProgress, saveProgress, shuffle, poolFor, nextScenario, recordAnswer, masteredCount, timeLimit, geometryFor, heading } from './engine.js';
 
@@ -5,13 +8,21 @@ const root = document.querySelector('#app');
 let storage;
 try { storage = window.localStorage; } catch { storage = { getItem: () => null, setItem: () => { throw new Error('Storage unavailable'); } }; }
 let progress = loadProgress(storage);
-let page = 'trainer';
+let page = 'course';
+let selectedRule = 1;
+let courseMode = 'watch';
+let modalCourseResume = false;
 let topic = 'all';
 let mode = 'watch';
 let session = null;
 let frame = 0;
 let storageOK = true;
 let modalResume = false;
+const courseGame = new CourseGame(storage, () => render(), state => {
+  const time=document.querySelector('#drill-time'),fill=document.querySelector('#drill-fill');
+  if(time)time.textContent=`${Math.ceil(state.remaining)} с`;
+  if(fill){fill.style.width=`${state.remaining/state.limit*100}%`;fill.classList.toggle('urgent',state.remaining<5);}
+});
 const embedded = new URLSearchParams(location.search).get('embed') === '1';
 if (embedded) document.body.classList.add('embedded');
 
@@ -33,11 +44,6 @@ const icons = {
   signal: '<path d="M4 19v-4m5 4v-8m5 8V7m5 12V3"/>',
 };
 const icon = (name, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.compass}</svg>`;
-const sourceLink = (key, ruleId) => {
-  const source = SOURCES[key];
-  const rule = key === 'forcesail' && RULES.some(rule => rule.id === ruleId);
-  return `<a href="${source.url}${rule ? `#rule-${ruleId}` : ''}" target="_blank" rel="noopener noreferrer">${rule ? `ForceSail · правило ${ruleId}` : source.label} ↗</a>`;
-};
 const formatTime = seconds => `${seconds.toFixed(1).replace('.', ',')} с`;
 const currentTopic = () => TOPICS.find(item => item.id === topic);
 
@@ -46,17 +52,21 @@ function persist() { storageOK = saveProgress(storage, progress); }
 function shell(content) {
   root.innerHTML = `
     <header class="site-header"><a class="brand" href="#" data-action="home" aria-label="Дельный МППСС — главная"><span class="brand-mark">${icon('sail')}</span><span>Дельный <b>МППСС</b><small>МОРСКАЯ ПРАКТИКА</small></span></a>
-      <nav aria-label="Основная навигация">${[['trainer', 'Тренажёр'], ['rules', 'Правила'], ['progress', 'Мой прогресс']].map(([id, name]) => `<button data-page="${id}" class="nav-link ${page === id ? 'active' : ''}" ${page === id ? 'aria-current="page"' : ''}>${name}</button>`).join('')}</nav>
-      <span class="byline">проект <strong>deelstuff<span>↗</span></strong></span>
+      <nav aria-label="Основная навигация">${[['course', 'Курс'], ['trainer', 'Вахта'], ['rules', 'Правила'], ['progress', 'Прогресс']].map(([id, name]) => `<button data-page="${id}" class="nav-link ${page === id ? 'active' : ''}" ${page === id ? 'aria-current="page"' : ''}>${name}</button>`).join('')}</nav>
+      <a class="byline" href="https://deelstuff.com/">проект <strong>deelstuff<span>↗</span></strong></a>
     </header>
     <main id="main">${content}</main>
-    <footer><span>${icon('sail')} Дельный МППСС <span class="footer-dot">·</span> Сделано, чтобы помнить.</span><button data-action="about">Об игре и источниках ${icon('arrow')}</button><span class="version">ПЕРВАЯ ВАХТА · V0.1</span></footer>
+    <footer><span>${icon('sail')} Дельный МППСС <span class="footer-dot">·</span> Сделано, чтобы помнить.</span><div class="footer-links"><button data-page="sources">Об игре и источники</button><button data-page="impressum">Impressum</button><button data-page="datenschutz">Datenschutz</button></div><span class="version">COLREG · V0.2</span></footer>
     <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>`;
-  document.querySelector('#modal').addEventListener('close', () => { if (modalResume && session?.phase === 'question') { modalResume = false; resume(); } });
+  document.querySelector('#modal').addEventListener('close', () => { if(modalCourseResume && courseGame.state?.phase==='question'){modalCourseResume=false;courseGame.state.paused=false;render();return;} if (modalResume && session?.phase === 'question') { modalResume = false; resume(); } });
 }
 
 function render() {
   cancelAnimationFrame(frame);
+  courseGame.stopClock();stopSignal();
+  if(page==='course'){shell(courseMarkup(courseGame.progress,courseMode,icon));return;}
+  if(['sources','impressum','datenschutz'].includes(page)){shell(informationMarkup(page,SOURCES));return;}
+  if(page==='drill'){if(!courseGame.state){page='course';render();return;}shell(drillMarkup(courseGame,icon));courseGame.startClock();if(courseGame.state.phase==='feedback')document.querySelector('[data-action=drill-next]')?.focus({preventScroll:true});return;}
   if (page === 'rules') { renderRules(); return; }
   if (page === 'progress') { renderProgress(); return; }
   const active = session && session.phase !== 'results';
@@ -88,7 +98,7 @@ function missionMarkup() {
   const feedback = s.phase === 'feedback';
   return `<div class="session-top"><span>СИТУАЦИЯ <b>${String(s.history.length).padStart(2, '0')}</b> / 10</span><span class="lives" aria-label="${mode === 'watch' ? `Осталось попыток: ${s.lives}` : 'Практика без ограничения ошибок'}">${mode === 'watch' ? [0, 1, 2].map(i => icon('heart', i < s.lives ? 'filled' : 'empty')).join('') : 'ПРАКТИКА'}</span></div>
     <div class="question-body"><p class="small-kicker">${feedback ? `ПРАВИЛО ${q.rules.join(' / ')}` : 'ОЦЕНИТЕ ОБСТАНОВКУ'}</p><h2>${q.question}</h2><p class="question-detail">${q.detail}</p>
-    ${feedback ? `<div class="feedback ${s.lastCorrect ? 'correct' : 'incorrect'}" role="status"><span class="feedback-symbol">${icon(s.lastCorrect ? 'check' : 'close')}</span><strong>${s.lastCorrect ? 'Верное решение' : s.timedOut ? 'Время вышло' : 'Давайте разберёмся'}</strong>${s.lastCorrect ? `<span class="earned">+${s.lastPoints}</span>` : ''}<p>${q.explanation}</p>${!s.lastCorrect ? `<p class="correct-answer">Верный ответ: ${q.answer}</p>` : ''}<div class="feedback-sources">${q.rules.map(id => sourceLink('forcesail', id)).join('')}</div></div><button class="primary-button" data-action="next">${s.lives <= 0 || s.history.length >= SESSION_LENGTH ? 'Результат вахты' : 'Следующая ситуация'} ${icon('arrow')}</button><button class="text-button rule-button" data-action="rule" data-rule="${q.rules[0]}">${icon('book')} Разобрать правило ${q.rules[0]}</button>` : `<div class="answer-options">${s.options.map((answer, i) => `<button class="answer-button" data-answer="${answer.id}" ${s.paused ? 'disabled' : ''}><kbd>${i + 1}</kbd><span>${answer.text}</span></button>`).join('')}</div><p class="keyboard-hint">Клавиши <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> · <kbd>Пробел</kbd> — пауза</p>`}</div>
+    ${feedback ? `<div class="feedback ${s.lastCorrect ? 'correct' : 'incorrect'}" role="status"><span class="feedback-symbol">${icon(s.lastCorrect ? 'check' : 'close')}</span><strong>${s.lastCorrect ? 'Верное решение' : s.timedOut ? 'Время вышло' : 'Давайте разберёмся'}</strong>${s.lastCorrect ? `<span class="earned">+${s.lastPoints}</span>` : ''}<p>${q.explanation}</p>${!s.lastCorrect ? `<p class="correct-answer">Верный ответ: ${q.answer}</p>` : ''}<div class="feedback-sources">${q.rules.map(id => `<button class="local-rule-link" data-action="rule" data-rule="${id}">Правило ${id}</button>`).join('')}</div></div><button class="primary-button" data-action="next">${s.lives <= 0 || s.history.length >= SESSION_LENGTH ? 'Результат вахты' : 'Следующая ситуация'} ${icon('arrow')}</button><button class="text-button rule-button" data-action="rule" data-rule="${q.rules[0]}">${icon('book')} Разобрать правило ${q.rules[0]}</button>` : `<div class="answer-options">${s.options.map((answer, i) => `<button class="answer-button" data-answer="${answer.id}" ${s.paused ? 'disabled' : ''}><kbd>${i + 1}</kbd><span>${answer.text}</span></button>`).join('')}</div><p class="keyboard-hint">Клавиши <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> · <kbd>Пробел</kbd> — пауза</p>`}</div>
     <div class="session-bottom"><span>ОЧКИ <b>${s.score}</b></span><span>СЕРИЯ <b>${s.streak} ${s.streak >= 3 ? '↗' : ''}</b></span><button data-action="finish" aria-label="Завершить текущую вахту">Завершить</button></div>`;
 }
 
@@ -219,20 +229,21 @@ function resultsMarkup() {
 }
 
 function renderRules() {
-  shell(`<section class="subpage-intro"><p class="eyebrow">КРАТКИЙ РАЗБОР · ПРАВИЛА 13–17</p><h1>Сначала понять.<br>Потом — узнавать.</h1><p>Основной источник — ${sourceLink('forcesail')}. Ниже — учебный пересказ пяти правил первой вахты. Комментарии источника и пояснения игры обозначены отдельно.</p></section><div class="rules-layout"><aside class="rules-context"><span class="large-icon">${icon('book')}</span><h2>Сначала контекст</h2><p>${CONDITIONS}</p><p>В тумане, узкости, СРД или при особом статусе судов набор применимых правил меняется.</p><button class="primary-button" data-action="home">Перейти к практике ${icon('arrow')}</button></aside><div class="rules-list">${RULES.map(rule => ruleMarkup(rule)).join('')}</div></div><div class="sources-block"><h2>Источники и границы версии</h2><p>Правила 13–17 и относящиеся к ним комментарии сверены по ForceSail 25 октября 2026 года. Авторские комментарии страницы сохраняют отдельную атрибуцию. IMO, USCG и MAIB оставлены дополнительными источниками для сверки. Полный курс МППСС, огни, знаки, сигналы и правило 19 пока не входят в эту версию.</p><div class="source-links">${Object.keys(SOURCES).map(key => sourceLink(key)).join('')}</div></div>`);
+  shell(`${courseGame.state?.phase==='question'?'<div class="return-to-game"><button data-page="drill">← Продолжить тренировку</button></div>':''}${libraryMarkup(selectedRule)}`);
 }
 
 function ruleMarkup(rule) {
-  return `<article class="rule-article" id="rule-${rule.id}"><span class="rule-number">${rule.id}</span><div><p class="small-kicker">ПРАВИЛО ${rule.id} · ${rule.title.toUpperCase()}</p><h2>${rule.short}</h2><span class="source-kind">Учебный пересказ правила</span><p>${rule.body}</p>${rule.commentary ? `<div class="source-commentary"><span class="source-kind">Комментарий ForceSail · пересказ</span><p>${rule.commentary}</p></div>` : ''}<p class="rule-note"><strong>Пояснение тренажёра.</strong> ${rule.note}</p>${sourceLink(rule.source, rule.id)}</div></article>`;
+  return `${rule ? `<div class="rule-summary"><span class="source-kind">Учебный пересказ</span><p>${rule.body}</p><p class="rule-note">${rule.note}</p></div>` : ''}${fullRuleMarkup(rule?.id || selectedRule)}`;
 }
 
 function renderProgress() {
   const total = progress.totalAnswers;
   const accuracy = total ? Math.round(progress.totalCorrect / total * 100) : 0;
-  shell(`<section class="subpage-intro"><p class="eyebrow">ВАШ СУДОВОЙ ЖУРНАЛ</p><h1>Уверенность<br>приходит с практикой.</h1><p>Прогресс хранится в этом браузере. Каждой ситуации нужны три верных ответа подряд для отметки «закреплено».</p></section><div class="progress-summary"><div><span>ЗАКРЕПЛЕНО СИТУАЦИЙ</span><strong>${masteredCount(progress)}<small> / 12</small></strong></div><div><span>ТОЧНОСТЬ</span><strong>${total ? `${accuracy}%` : '—'}</strong></div><div><span>ЗАВЕРШЕНО ВАХТ</span><strong>${progress.sessions}</strong></div><div><span>ЛУЧШИЙ РЕЗУЛЬТАТ</span><strong>${progress.bestScore}</strong></div></div><div class="progress-list">${SCENARIOS.map(q => { const a = progress.attempts[q.id]; const count = a?.streak || 0; return `<div class="progress-row"><span class="progress-rule">${q.rules[0]}</span><div><strong>${q.title}</strong><small>${a ? `${a.correct} верно из ${a.seen} попыток` : 'Ещё не встречалась'}</small></div><span class="mastery-dots" aria-label="${count} из 3 верных ответов подряд">${[1, 2, 3].map(i => `<i class="${count >= i ? 'done' : ''}"></i>`).join('')}</span><span class="mastery-label">${count >= 3 ? 'Закреплено' : `${count} / 3`}</span></div>`; }).join('')}</div><div class="progress-actions"><button class="primary-button" data-action="home">Продолжить тренировку ${icon('arrow')}</button><button class="text-button" data-action="reset">Сбросить прогресс</button></div>`);
+  shell(`<section class="subpage-intro"><p class="eyebrow">ВАШ СУДОВОЙ ЖУРНАЛ</p><h1>Уверенность<br>приходит с практикой.</h1><p>Прогресс хранится в этом браузере. Каждой ситуации нужны три верных ответа подряд для отметки «закреплено».</p></section><div class="course-progress-note"><strong>Полный курс: ${COURSE_CARDS.filter(q=>courseGame.progress[q.id]?.streak>=3).length} / ${COURSE_CARDS.length} вопросов закреплено</strong><button data-page="course">К тренировкам →</button></div><h2 class="journal-heading">Вахта со сближением судов</h2><div class="progress-summary"><div><span>ЗАКРЕПЛЕНО СИТУАЦИЙ</span><strong>${masteredCount(progress)}<small> / 12</small></strong></div><div><span>ТОЧНОСТЬ</span><strong>${total ? `${accuracy}%` : '—'}</strong></div><div><span>ЗАВЕРШЕНО ВАХТ</span><strong>${progress.sessions}</strong></div><div><span>ЛУЧШИЙ РЕЗУЛЬТАТ</span><strong>${progress.bestScore}</strong></div></div><div class="progress-list">${SCENARIOS.map(q => { const a = progress.attempts[q.id]; const count = a?.streak || 0; return `<div class="progress-row"><span class="progress-rule">${q.rules[0]}</span><div><strong>${q.title}</strong><small>${a ? `${a.correct} верно из ${a.seen} попыток` : 'Ещё не встречалась'}</small></div><span class="mastery-dots" aria-label="${count} из 3 верных ответов подряд">${[1, 2, 3].map(i => `<i class="${count >= i ? 'done' : ''}"></i>`).join('')}</span><span class="mastery-label">${count >= 3 ? 'Закреплено' : `${count} / 3`}</span></div>`; }).join('')}</div><div class="progress-actions"><button class="primary-button" data-action="home">Продолжить тренировку ${icon('arrow')}</button><button class="text-button" data-action="reset">Сбросить прогресс</button></div>`);
 }
 
 function showModal(content) {
+  if(page==='drill' && courseGame.state?.phase==='question' && !courseGame.state.paused){courseGame.state.paused=true;courseGame.stopClock();modalCourseResume=true;stopSignal();}
   if (session?.phase === 'question' && !session.paused) { session.paused = true; cancelAnimationFrame(frame); modalResume = true; }
   document.querySelector('#modal-content').innerHTML = `<button class="modal-close" data-action="close-modal" aria-label="Закрыть">${icon('close')}</button>${content}`;
   document.querySelector('#modal').showModal();
@@ -247,15 +258,24 @@ root.addEventListener('click', event => {
   if (!button || button.disabled) return;
   if (button.dataset.page) {
     if (session?.phase === 'question') session.paused = true;
+    if(courseGame.state?.phase==='question')courseGame.state.paused=true;
     page = button.dataset.page;
-    render();
+    history.replaceState(null,'',`#${page}`);
+    render();window.scrollTo(0,0);
     return;
   }
+  if(button.dataset.viewRule){selectedRule=button.dataset.viewRule;page='rules';render();document.querySelector('.library-reader')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
+  if(button.dataset.startModule){page='drill';history.replaceState(null,'','#drill');courseGame.start(button.dataset.startModule,courseMode);window.scrollTo(0,0);return;}
+  if(button.dataset.courseMode){courseMode=button.dataset.courseMode;render();return;}
+  if(button.dataset.drillAnswer){courseGame.submit(button.dataset.drillAnswer);return;}
   if (button.dataset.mode) { mode = button.dataset.mode; session = null; render(); return; }
   if (button.dataset.topic) { topic = button.dataset.topic; session = null; render(); return; }
   if (button.dataset.answer) { answer(button.dataset.answer); return; }
   switch (button.dataset.action) {
-    case 'home': event.preventDefault(); if (page === 'trainer' && session?.phase !== 'results') session = null; page = 'trainer'; render(); break;
+    case 'home': event.preventDefault(); if(session?.phase==='question')session.paused=true;if(courseGame.state?.phase==='question')courseGame.state.paused=true;page='course';history.replaceState(null,'','#course');render();window.scrollTo(0,0);break;
+    case 'drill-next': courseGame.next(); break;
+    case 'drill-pause': courseGame.pause(); break;
+    case 'play-signal': if(!playSignal(courseGame.state.question.sound))showModal('<h2 id="modal-title">Звук недоступен</h2><p>Используйте визуальную последовательность точек и тире.</p>');break;
     case 'start': start(); break;
     case 'pause': pause(); break;
     case 'next': session.lives <= 0 || session.history.length >= SESSION_LENGTH ? finish() : ask(); break;
@@ -263,24 +283,39 @@ root.addEventListener('click', event => {
     case 'lobby': session = null; render(); break;
     case 'how': how(); break;
     case 'conditions': showModal(`<p class="eyebrow">КОНТЕКСТ ПЕРВОЙ ВАХТЫ</p><h2 id="modal-title">Условия задачи</h2><p>${CONDITIONS}</p><p>Текст задания уточняет стадию сближения. На схеме показано направление движения, а не полноценная радиолокационная прокладка. Сближение и таймер — игровая условность; секунды не являются реальным временем до столкновения.</p><p class="modal-note">Здесь тренируем узнавание обязанностей. Выбор конкретного курса, скорости и безопасной дистанции требует полной оценки обстановки.</p>`); break;
-    case 'about': showModal(`<p class="eyebrow">ПРОЕКТ DEELSTUFF · V0.1</p><h2 id="modal-title">Дельный МППСС</h2><p>Учебная игра для отработки распознавания ситуаций. Первая версия охватывает встречу, пересечение и обгон: 12 ситуаций с меняющимся курсом вашего судна.</p><p>Основной источник — страница ForceSail «МППСС с иллюстрациями и комментариями». Здесь используется краткий учебный пересказ со ссылками на конкретные правила. Комментарии ForceSail и пояснения тренажёра подписаны отдельно.</p><div class="source-links">${Object.keys(SOURCES).map(key => sourceLink(key)).join('')}</div><p class="modal-note">Прогресс хранится локально. Регистрация, аналитика и отправка ответов на сервер не используются. Игра не заменяет полный текст МППСС и практическую подготовку.</p>`); break;
+    case 'about': page='sources';render();break;
     case 'rule': {
-      const rule = RULES.find(item => item.id === Number(button.dataset.rule));
-      showModal(`<h2 id="modal-title" class="sr-only">Правило ${rule.id}: ${rule.title}</h2>${ruleMarkup(rule)}`);
+      selectedRule=button.dataset.rule;
+      const doc=getDocument(selectedRule);
+      if(!doc)break;
+      const summary=RULES.find(item=>String(item.id)===String(selectedRule));
+      showModal(`<h2 id="modal-title" class="sr-only">${doc.title}</h2>${ruleMarkup(summary)}`);
       break;
     }
     case 'close-modal': document.querySelector('#modal').close(); break;
-    case 'reset': showModal('<p class="eyebrow">СУДОВОЙ ЖУРНАЛ</p><h2 id="modal-title">Начать с чистого листа?</h2><p>Локальная история ответов, очки и закреплённые ситуации будут удалены из этого браузера.</p><div class="modal-actions"><button class="secondary-button" data-action="close-modal">Сохранить прогресс</button><button class="danger-button" data-action="confirm-reset">Сбросить</button></div>'); break;
-    case 'confirm-reset': progress = emptyProgress(); persist(); session = null; render(); break;
+    case 'reset': showModal('<p class="eyebrow">СУДОВОЙ ЖУРНАЛ</p><h2 id="modal-title">Начать с чистого листа?</h2><p>Локальная история ответов во всех тренировках, очки и закреплённые ситуации будут удалены из этого браузера.</p><div class="modal-actions"><button class="secondary-button" data-action="close-modal">Сохранить прогресс</button><button class="danger-button" data-action="confirm-reset">Сбросить</button></div>'); break;
+    case 'confirm-reset': progress = emptyProgress(); persist(); session = null; courseGame.reset();courseGame.state=null; render(); break;
   }
 });
 
 document.addEventListener('keydown', event => {
+  if(page==='drill' && courseGame.state && !document.querySelector('#modal')?.open && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey){
+    const s=courseGame.state;if(event.code==='Space' && s.phase==='question'){event.preventDefault();courseGame.pause();return;}
+    if(['1','2','3'].includes(event.key)&&s.phase==='question'&&!s.paused){event.preventDefault();courseGame.submit(s.options[Number(event.key)-1].id);return;}
+  }
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || document.querySelector('#modal')?.open || page !== 'trainer' || !session) return;
   if (event.code === 'Space' && session.phase === 'question') { event.preventDefault(); pause(); }
   if (['1', '2', '3'].includes(event.key) && session.phase === 'question' && !session.paused) { event.preventDefault(); answer(session.options[Number(event.key) - 1].id); }
   if (event.key === 'Enter' && session.phase === 'feedback' && !event.target.closest('button, a')) { event.preventDefault(); session.lives <= 0 || session.history.length >= SESSION_LENGTH ? finish() : ask(); }
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden && session?.phase === 'question' && !session.paused) { session.paused = true; render(); } });
-window.addEventListener('pagehide', () => cancelAnimationFrame(frame));
-render();
+document.addEventListener('visibilitychange', () => { if(document.hidden && page==='drill' && courseGame.state?.phase==='question'&&!courseGame.state.paused)courseGame.pause(); if (document.hidden && session?.phase === 'question' && !session.paused) { session.paused = true; render(); } });
+window.addEventListener('pagehide', () => {cancelAnimationFrame(frame);courseGame.stopClock();stopSignal();});
+root.addEventListener('input',event=>{if(event.target.matches('[data-library-search]'))document.querySelector('.library-toc').innerHTML=libraryTOC(event.target.value);});
+root.addEventListener('change',event=>{if(event.target.matches('[data-library-picker]')){selectedRule=event.target.value;render();}});
+function routeFromHash(){
+  const hash=location.hash.slice(1);
+  if(/^(rule-\d+|annex-[1-4])$/.test(hash)){selectedRule=hash.startsWith('rule-')?Number(hash.slice(5)):hash;page='rules';if(session?.phase==='question')session.paused=true;if(courseGame.state?.phase==='question')courseGame.state.paused=true;modalCourseResume=false;modalResume=false;}
+  else if(['course','trainer','rules','progress','sources','impressum','datenschutz'].includes(hash))page=hash;
+}
+window.addEventListener('hashchange',()=>{routeFromHash();render();});
+routeFromHash();render();
