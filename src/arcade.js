@@ -20,7 +20,7 @@ export class Arcade {
   document.querySelectorAll('[data-token]').forEach(b=>{
    b.addEventListener('click',()=>{if(s.phase!=='running'||s.paused)return;s.selected=b.dataset.token;document.querySelectorAll('[data-token]').forEach(t=>t.classList.toggle('selected',t===b));},options);
    b.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',b.dataset.token);s.selected=b.dataset.token;},options);
-   b.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'||s.phase!=='running'||s.paused)return;s.selected=b.dataset.token;this.dragToken=b.dataset.token;this.dragStart={x:e.clientX,y:e.clientY};},options);
+   b.addEventListener('pointerdown',e=>{if(s.phase!=='running'||s.paused)return;e.preventDefault();b.setPointerCapture(e.pointerId);b.focus({preventScroll:true});s.selected=b.dataset.token;document.querySelectorAll('[data-token]').forEach(t=>t.classList.toggle('selected',t===b));this.dragToken=b.dataset.token;this.dragStart={x:e.clientX,y:e.clientY};},options);
   });
   document.querySelectorAll('[data-slot]').forEach(b=>{
    b.addEventListener('click',()=>this.put(Number(b.dataset.slot),s.selected),options);
@@ -29,6 +29,7 @@ export class Arcade {
   });
   document.addEventListener('pointermove',e=>{if(!this.dragToken)return;if(!this.dragGhost&&Math.hypot(e.clientX-this.dragStart.x,e.clientY-this.dragStart.y)>7){this.dragGhost=document.createElement('div');this.dragGhost.className='token-ghost';this.dragGhost.innerHTML=tokenHTML(this.dragToken);document.body.append(this.dragGhost);}if(this.dragGhost){e.preventDefault();this.dragGhost.style.left=`${e.clientX}px`;this.dragGhost.style.top=`${e.clientY}px`;}},{...options,passive:false});
   document.addEventListener('pointerup',e=>{if(this.dragGhost){const slot=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-slot]');if(slot)this.put(Number(slot.dataset.slot),this.dragToken);this.dragGhost.remove();this.dragGhost=null;}this.dragToken=null;},options);
+  document.addEventListener('pointercancel',()=>{this.dragGhost?.remove();this.dragGhost=null;this.dragToken=null;},options);
   const pad=document.querySelector('[data-whistle-pad]');
   pad?.addEventListener('pointerdown',e=>{e.preventDefault();pad.setPointerCapture(e.pointerId);this.press();},options);
   pad?.addEventListener('pointerup',()=>this.release(),options);pad?.addEventListener('pointercancel',()=>this.release(true),options);pad?.addEventListener('lostpointercapture',()=>this.release(),options);
@@ -81,7 +82,7 @@ export class Arcade {
    const last=s.blasts.at(-1);if(last&&!this.holding)set('whistle-gap',`Пауза: ${Math.max(0,s.elapsed-last.start-last.duration).toFixed(1)} с`);
   }
   if(s.type==='lookout'){
-   const log=document.querySelector('#bearing-log');const html=`<table><caption>${s.samples.length} / 3 наблюдения</caption><thead><tr><th>Цель</th>${s.samples.map((v,i)=>`<th>${i+1}: ${Math.round(v.time)} с</th>`).join('')}</tr></thead><tbody>${['A','B','C'].map(id=>`<tr><th>${id}</th>${s.samples.map(v=>{const b=v.targets.find(t=>t.id===id);return `<td>${Math.round(b.bearing)}°<small>${Math.round(b.range)} м</small></td>`;}).join('')}</tr>`).join('')}</tbody></table><p id="bearing-status" role="status">${s.samples.length>=3?'Отметьте опасные цели и завершите наблюдение.':s.samples.length&&s.time-s.samples.at(-1).time<10?`Следующее наблюдение через ${Math.ceil(10-s.time+s.samples.at(-1).time)} с`:'Можно снять пеленги всех целей.'}</p>`;
+   const log=document.querySelector('#bearing-log');const html=`<table><caption>${s.samples.length} / 3 наблюдения</caption><thead><tr><th>Цель</th>${s.samples.map((v,i)=>`<th>${i+1}: ${Math.round(v.time)} с</th>`).join('')}</tr></thead><tbody>${['A','B','C'].map(id=>`<tr><th>${id}</th>${s.samples.map(v=>{const b=v.targets.find(t=>t.id===id);return `<td>${Math.round(b.bearing)}°<small>${Math.round(b.range)} м</small></td>`;}).join('')}</tr>`).join('')}</tbody></table><p id="bearing-status" role="status">${s.phase==='result'?'Наблюдения завершены.':s.samples.length>=3?'Отметьте опасные цели и завершите наблюдение.':s.samples.length&&s.time-s.samples.at(-1).time<10?`Следующее наблюдение через ${Math.ceil(10-s.time+s.samples.at(-1).time)} с`:'Можно снять пеленги всех целей.'}</p>`;
    if(log&&log.innerHTML!==html)log.innerHTML=html;const observe=document.querySelector('[data-arcade="observe"]');const complete=document.querySelector('[data-arcade="check"]');if(complete)complete.disabled=s.phase!=='running'||s.paused||s.samples.length<3;if(observe)observe.disabled=s.phase!=='running'||s.paused||s.samples.length>=3||(s.samples.length>0&&s.time-s.samples.at(-1).time<9.9);
   }
  }
