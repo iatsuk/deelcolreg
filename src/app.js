@@ -1,3 +1,5 @@
+import { Arcade } from './arcade.js';
+import { arcadeHub, arcadeMarkup, GAME_TYPES } from './arcade-pages.js';
 import { CourseGame, playSignal, stopSignal } from './course-game.js';
 import { COURSE_CARDS } from './course.js';
 import { libraryMarkup, libraryTOC, fullRuleMarkup, getDocument, courseMarkup, drillMarkup, informationMarkup } from './pages.js';
@@ -12,6 +14,7 @@ let page = 'course';
 let selectedRule = 1;
 let courseMode = 'watch';
 let modalCourseResume = false;
+let modalArcadeResume = false;
 let topic = 'all';
 let mode = 'watch';
 let session = null;
@@ -23,6 +26,7 @@ const courseGame = new CourseGame(storage, () => render(), state => {
   if(time)time.textContent=`${Math.ceil(state.remaining)} с`;
   if(fill){fill.style.width=`${state.remaining/state.limit*100}%`;fill.classList.toggle('urgent',state.remaining<5);}
 });
+const arcade = new Arcade(storage, () => render(), () => { page='course';history.replaceState(null,'','#course');render();window.scrollTo(0,0); });
 const embedded = new URLSearchParams(location.search).get('embed') === '1';
 if (embedded) document.body.classList.add('embedded');
 
@@ -52,19 +56,21 @@ function persist() { storageOK = saveProgress(storage, progress); }
 function shell(content) {
   root.innerHTML = `
     <header class="site-header"><a class="brand" href="#" data-action="home" aria-label="Дельный МППСС — главная"><span class="brand-mark">${icon('sail')}</span><span>Дельный <b>МППСС</b><small>МОРСКАЯ ПРАКТИКА</small></span></a>
-      <nav aria-label="Основная навигация">${[['course', 'Курс'], ['trainer', 'Вахта'], ['rules', 'Правила'], ['progress', 'Прогресс']].map(([id, name]) => `<button data-page="${id}" class="nav-link ${page === id ? 'active' : ''}" ${page === id ? 'aria-current="page"' : ''}>${name}</button>`).join('')}</nav>
+      <nav aria-label="Основная навигация">${[['course', 'Играть'], ['rules', 'Правила'], ['progress', 'Прогресс']].map(([id, name]) => `<button data-page="${id}" class="nav-link ${page === id ? 'active' : ''}" ${page === id ? 'aria-current="page"' : ''}>${name}</button>`).join('')}</nav>
       <a class="byline" href="https://deelstuff.com/">проект <strong>deelstuff<span>↗</span></strong></a>
     </header>
     <main id="main">${content}</main>
-    <footer><span>${icon('sail')} Дельный МППСС <span class="footer-dot">·</span> Сделано, чтобы помнить.</span><div class="footer-links"><button data-page="sources">Об игре и источники</button><button data-page="impressum">Impressum</button><button data-page="datenschutz">Datenschutz</button></div><span class="version">COLREG · V0.2</span></footer>
+    <footer><span>${icon('sail')} Дельный МППСС <span class="footer-dot">·</span> Сделано, чтобы помнить.</span><div class="footer-links"><button data-page="sources">Об игре и источники</button><button data-page="impressum">Impressum</button><button data-page="datenschutz">Datenschutz</button></div><span class="version">COLREG · V0.3</span></footer>
     <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>`;
-  document.querySelector('#modal').addEventListener('close', () => { if(modalCourseResume && courseGame.state?.phase==='question'){modalCourseResume=false;courseGame.state.paused=false;render();return;} if (modalResume && session?.phase === 'question') { modalResume = false; resume(); } });
+  document.querySelector('#modal').addEventListener('close', () => { if(modalArcadeResume){modalArcadeResume=false;arcade.state.paused=false;render();return;} if(modalCourseResume && courseGame.state?.phase==='question'){modalCourseResume=false;courseGame.state.paused=false;render();return;} if (modalResume && session?.phase === 'question') { modalResume = false; resume(); } });
 }
 
 function render() {
   cancelAnimationFrame(frame);
-  courseGame.stopClock();stopSignal();
-  if(page==='course'){shell(courseMarkup(courseGame.progress,courseMode,icon));return;}
+  courseGame.stopClock();stopSignal();arcade.detach();
+  if(page==='course'){shell(arcadeHub(arcade.progress));return;}
+  if(GAME_TYPES[page]){if(arcade.state?.type!==page){arcade.start(page);return;}shell(arcadeMarkup(arcade));if(!arcade.saved)document.querySelector('#main').insertAdjacentHTML('beforeend','<p class="arcade-storage-note" role="status">Сохранить прогресс не удалось. Игра продолжает работать в этой вкладке.</p>');arcade.mount();return;}
+  if(page==='cards'){shell(courseMarkup(courseGame.progress,courseMode,icon));return;}
   if(['sources','impressum','datenschutz'].includes(page)){shell(informationMarkup(page,SOURCES));return;}
   if(page==='drill'){if(!courseGame.state){page='course';render();return;}shell(drillMarkup(courseGame,icon));courseGame.startClock();if(courseGame.state.phase==='feedback')document.querySelector('[data-action=drill-next]')?.focus({preventScroll:true});return;}
   if (page === 'rules') { renderRules(); return; }
@@ -239,10 +245,11 @@ function ruleMarkup(rule) {
 function renderProgress() {
   const total = progress.totalAnswers;
   const accuracy = total ? Math.round(progress.totalCorrect / total * 100) : 0;
-  shell(`<section class="subpage-intro"><p class="eyebrow">ВАШ СУДОВОЙ ЖУРНАЛ</p><h1>Уверенность<br>приходит с практикой.</h1><p>Прогресс хранится в этом браузере. Каждой ситуации нужны три верных ответа подряд для отметки «закреплено».</p></section><div class="course-progress-note"><strong>Полный курс: ${COURSE_CARDS.filter(q=>courseGame.progress[q.id]?.streak>=3).length} / ${COURSE_CARDS.length} вопросов закреплено</strong><button data-page="course">К тренировкам →</button></div><h2 class="journal-heading">Вахта со сближением судов</h2><div class="progress-summary"><div><span>ЗАКРЕПЛЕНО СИТУАЦИЙ</span><strong>${masteredCount(progress)}<small> / 12</small></strong></div><div><span>ТОЧНОСТЬ</span><strong>${total ? `${accuracy}%` : '—'}</strong></div><div><span>ЗАВЕРШЕНО ВАХТ</span><strong>${progress.sessions}</strong></div><div><span>ЛУЧШИЙ РЕЗУЛЬТАТ</span><strong>${progress.bestScore}</strong></div></div><div class="progress-list">${SCENARIOS.map(q => { const a = progress.attempts[q.id]; const count = a?.streak || 0; return `<div class="progress-row"><span class="progress-rule">${q.rules[0]}</span><div><strong>${q.title}</strong><small>${a ? `${a.correct} верно из ${a.seen} попыток` : 'Ещё не встречалась'}</small></div><span class="mastery-dots" aria-label="${count} из 3 верных ответов подряд">${[1, 2, 3].map(i => `<i class="${count >= i ? 'done' : ''}"></i>`).join('')}</span><span class="mastery-label">${count >= 3 ? 'Закреплено' : `${count} / 3`}</span></div>`; }).join('')}</div><div class="progress-actions"><button class="primary-button" data-action="home">Продолжить тренировку ${icon('arrow')}</button><button class="text-button" data-action="reset">Сбросить прогресс</button></div>`);
+  shell(`<section class="subpage-intro"><p class="eyebrow">ВАШ СУДОВОЙ ЖУРНАЛ</p><h1>Уверенность<br>приходит с практикой.</h1><p>Прогресс хранится в этом браузере. Каждой ситуации нужны три верных ответа подряд для отметки «закреплено».</p></section><div class="course-progress-note"><strong>Проверка знаний: ${COURSE_CARDS.filter(q=>courseGame.progress[q.id]?.streak>=3).length} / ${COURSE_CARDS.length} вопросов закреплено</strong><button data-page="course">К тренировкам →</button></div><h2 class="journal-heading">Игровые миссии</h2><div class="arcade-progress-grid">${Object.entries(GAME_TYPES).map(([id,g])=>`<div><span>${g.name}</span><strong>${g.items.filter(t=>arcade.progress[`${g.prefix}-${t.id}`]?.wins).length}<small> / ${g.items.length}</small></strong><button class="text-button" data-start-game="${id}">Играть →</button></div>`).join('')}</div><h2 class="journal-heading">Архив тренировок со сближением судов</h2><div class="progress-summary"><div><span>ЗАКРЕПЛЕНО СИТУАЦИЙ</span><strong>${masteredCount(progress)}<small> / 12</small></strong></div><div><span>ТОЧНОСТЬ</span><strong>${total ? `${accuracy}%` : '—'}</strong></div><div><span>ЗАВЕРШЕНО ВАХТ</span><strong>${progress.sessions}</strong></div><div><span>ЛУЧШИЙ РЕЗУЛЬТАТ</span><strong>${progress.bestScore}</strong></div></div><div class="progress-list">${SCENARIOS.map(q => { const a = progress.attempts[q.id]; const count = a?.streak || 0; return `<div class="progress-row"><span class="progress-rule">${q.rules[0]}</span><div><strong>${q.title}</strong><small>${a ? `${a.correct} верно из ${a.seen} попыток` : 'Ещё не встречалась'}</small></div><span class="mastery-dots" aria-label="${count} из 3 верных ответов подряд">${[1, 2, 3].map(i => `<i class="${count >= i ? 'done' : ''}"></i>`).join('')}</span><span class="mastery-label">${count >= 3 ? 'Закреплено' : `${count} / 3`}</span></div>`; }).join('')}</div><div class="progress-actions"><button class="primary-button" data-action="home">Продолжить тренировку ${icon('arrow')}</button><button class="text-button" data-action="reset">Сбросить прогресс</button></div>`);
 }
 
 function showModal(content) {
+  if(GAME_TYPES[page]&&arcade.state?.phase==='running'&&!arcade.state.paused){arcade.suspend();modalArcadeResume=true;}
   if(page==='drill' && courseGame.state?.phase==='question' && !courseGame.state.paused){courseGame.state.paused=true;courseGame.stopClock();modalCourseResume=true;stopSignal();}
   if (session?.phase === 'question' && !session.paused) { session.paused = true; cancelAnimationFrame(frame); modalResume = true; }
   document.querySelector('#modal-content').innerHTML = `<button class="modal-close" data-action="close-modal" aria-label="Закрыть">${icon('close')}</button>${content}`;
@@ -257,6 +264,7 @@ root.addEventListener('click', event => {
   const button = event.target.closest('button, a[data-action]');
   if (!button || button.disabled) return;
   if (button.dataset.page) {
+    arcade.suspend();
     if (session?.phase === 'question') session.paused = true;
     if(courseGame.state?.phase==='question')courseGame.state.paused=true;
     page = button.dataset.page;
@@ -264,6 +272,7 @@ root.addEventListener('click', event => {
     render();window.scrollTo(0,0);
     return;
   }
+  if(button.dataset.startGame){arcade.suspend();page=button.dataset.startGame;history.replaceState(null,'',`#${page}`);arcade.start(page);window.scrollTo(0,0);return;}
   if(button.dataset.viewRule){selectedRule=button.dataset.viewRule;page='rules';render();document.querySelector('.library-reader')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
   if(button.dataset.startModule){page='drill';history.replaceState(null,'','#drill');courseGame.start(button.dataset.startModule,courseMode);window.scrollTo(0,0);return;}
   if(button.dataset.courseMode){courseMode=button.dataset.courseMode;render();return;}
@@ -272,7 +281,7 @@ root.addEventListener('click', event => {
   if (button.dataset.topic) { topic = button.dataset.topic; session = null; render(); return; }
   if (button.dataset.answer) { answer(button.dataset.answer); return; }
   switch (button.dataset.action) {
-    case 'home': event.preventDefault(); if(session?.phase==='question')session.paused=true;if(courseGame.state?.phase==='question')courseGame.state.paused=true;page='course';history.replaceState(null,'','#course');render();window.scrollTo(0,0);break;
+    case 'home': event.preventDefault();arcade.suspend(); if(session?.phase==='question')session.paused=true;if(courseGame.state?.phase==='question')courseGame.state.paused=true;page='course';history.replaceState(null,'','#course');render();window.scrollTo(0,0);break;
     case 'drill-next': courseGame.next(); break;
     case 'drill-pause': courseGame.pause(); break;
     case 'play-signal': if(!playSignal(courseGame.state.question.sound))showModal('<h2 id="modal-title">Звук недоступен</h2><p>Используйте визуальную последовательность точек и тире.</p>');break;
@@ -294,7 +303,7 @@ root.addEventListener('click', event => {
     }
     case 'close-modal': document.querySelector('#modal').close(); break;
     case 'reset': showModal('<p class="eyebrow">СУДОВОЙ ЖУРНАЛ</p><h2 id="modal-title">Начать с чистого листа?</h2><p>Локальная история ответов во всех тренировках, очки и закреплённые ситуации будут удалены из этого браузера.</p><div class="modal-actions"><button class="secondary-button" data-action="close-modal">Сохранить прогресс</button><button class="danger-button" data-action="confirm-reset">Сбросить</button></div>'); break;
-    case 'confirm-reset': progress = emptyProgress(); persist(); session = null; courseGame.reset();courseGame.state=null; render(); break;
+    case 'confirm-reset': progress = emptyProgress(); persist(); session = null; courseGame.reset();courseGame.state=null; arcade.reset();render(); break;
   }
 });
 
@@ -308,14 +317,15 @@ document.addEventListener('keydown', event => {
   if (['1', '2', '3'].includes(event.key) && session.phase === 'question' && !session.paused) { event.preventDefault(); answer(session.options[Number(event.key) - 1].id); }
   if (event.key === 'Enter' && session.phase === 'feedback' && !event.target.closest('button, a')) { event.preventDefault(); session.lives <= 0 || session.history.length >= SESSION_LENGTH ? finish() : ask(); }
 });
-document.addEventListener('visibilitychange', () => { if(document.hidden && page==='drill' && courseGame.state?.phase==='question'&&!courseGame.state.paused)courseGame.pause(); if (document.hidden && session?.phase === 'question' && !session.paused) { session.paused = true; render(); } });
-window.addEventListener('pagehide', () => {cancelAnimationFrame(frame);courseGame.stopClock();stopSignal();});
+document.addEventListener('visibilitychange', () => { if(document.hidden&&GAME_TYPES[page]&&arcade.state?.phase==='running'&&!arcade.state.paused)arcade.pause(); if(document.hidden && page==='drill' && courseGame.state?.phase==='question'&&!courseGame.state.paused)courseGame.pause(); if (document.hidden && session?.phase === 'question' && !session.paused) { session.paused = true; render(); } });
+window.addEventListener('pagehide', () => {arcade.suspend();cancelAnimationFrame(frame);courseGame.stopClock();stopSignal();});
 root.addEventListener('input',event=>{if(event.target.matches('[data-library-search]'))document.querySelector('.library-toc').innerHTML=libraryTOC(event.target.value);});
 root.addEventListener('change',event=>{if(event.target.matches('[data-library-picker]')){selectedRule=event.target.value;render();}});
 function routeFromHash(){
+  arcade.suspend();
   const hash=location.hash.slice(1);
   if(/^(rule-\d+|annex-[1-4])$/.test(hash)){selectedRule=hash.startsWith('rule-')?Number(hash.slice(5)):hash;page='rules';if(session?.phase==='question')session.paused=true;if(courseGame.state?.phase==='question')courseGame.state.paused=true;modalCourseResume=false;modalResume=false;}
-  else if(['course','trainer','rules','progress','sources','impressum','datenschutz'].includes(hash))page=hash;
+  else if(['course','cards','bridge','lookout','lantern','whistle','trainer','rules','progress','sources','impressum','datenschutz'].includes(hash))page=hash;
 }
 window.addEventListener('hashchange',()=>{routeFromHash();render();});
 routeFromHash();render();
