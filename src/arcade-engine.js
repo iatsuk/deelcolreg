@@ -130,6 +130,13 @@ export function lookoutAt(round,t){
  const own={...rotate(0,5*t),h:round.rotation,s:5};
  return {own,targets:round.targets.map(b=>{const v=vector(b.h,b.s),p=rotate(b.x+v.x*t,b.y+v.y*t);const dx=p.x-own.x,dy=p.y-own.y;return {...b,...p,h:angle(b.h+round.rotation),bearing:angle(Math.atan2(dx,dy)*180/Math.PI),range:Math.hypot(dx,dy),risk:cpa(own,{...b,...p,h:angle(b.h+round.rotation)}).distance<75};})};
 }
+// Each observation window waits for the player, so reading the brief cannot
+// consume the later measurements. Measurements remain ten simulated seconds apart.
+export function stepLookout(state,dt){
+ const ceiling=state.samples.length>=3?state.samples.at(-1).time:10*(state.samples.length+1);
+ state.time=Math.min(ceiling,state.time+Math.max(0,dt));
+ return state.time;
+}
 export function loadArcade(storage){
  try{const obj=JSON.parse(storage.getItem(ARCADE_KEY)||'{}');return Object.fromEntries(Object.entries(obj).filter(([k,v])=>/^(nav|light|sound|look)-/.test(k)&&v&&Number.isInteger(v.wins)&&v.wins>=0&&Number.isInteger(v.tries)&&v.tries>=v.wins));}catch{return {};}
 }

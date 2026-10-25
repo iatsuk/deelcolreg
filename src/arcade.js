@@ -1,4 +1,4 @@
-import { angle,turn,clamp,vector,createVoyage,stepVoyage,commandVoyage,LANTERNS,WHISTLES,LOOKOUT_ROUNDS,lookoutAt,gradeLantern,gradeWhistle,loadArcade,saveArcade,ARCADE_KEY,TOKEN_NAMES } from './arcade-engine.js';
+import { angle,turn,clamp,vector,createVoyage,stepVoyage,commandVoyage,LANTERNS,WHISTLES,LOOKOUT_ROUNDS,lookoutAt,stepLookout,gradeLantern,gradeWhistle,loadArcade,saveArcade,ARCADE_KEY,TOKEN_NAMES } from './arcade-engine.js';
 import { GAME_TYPES,tokenHTML } from './arcade-pages.js';
 export class Arcade {
  constructor(storage,changed,home){this.storage=storage;this.changed=changed;this.home=home;this.progress=loadArcade(storage);this.state=null;this.frame=0;this.audio=null;this.saved=true;}
@@ -66,7 +66,7 @@ export class Arcade {
  complete(){const s=this.state;const g=GAME_TYPES[s.type];this.saved=saveArcade(this.storage,this.progress,`${g.prefix}-${this.task().id}`,s.success);this.changed();}
  status(text){const el=document.querySelector('#bearing-status');if(el)el.textContent=text;}
  tick(now){const s=this.state;if(!this.canvas?.isConnected)return;const dt=Math.min(.05,Math.max(0,(now-this.last)/1000));this.last=now;
-  if(s.phase==='running'&&!s.paused){s.elapsed+=dt;if(s.type==='bridge'){for(let i=0;i<2;i++)stepVoyage(s,dt*2);if(s.phase==='result'){this.complete();return;}}if(s.type==='lookout')s.time=Math.min(35,s.time+dt*4);}
+  if(s.phase==='running'&&!s.paused){s.elapsed+=dt;if(s.type==='bridge'){for(let i=0;i<2;i++)stepVoyage(s,dt*2);if(s.phase==='result'){this.complete();return;}}if(s.type==='lookout')stepLookout(s,dt*4);}
   this.draw();this.updateHUD();this.frame=requestAnimationFrame(t=>this.tick(t));
  }
  updateHUD(){const s=this.state;const set=(id,t)=>{const el=document.getElementById(id);if(el&&el.textContent!==t)el.textContent=t;};const t=s.type==='bridge'?s.time:s.type==='lookout'?s.time:s.elapsed||0;set('sea-clock',`${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { VOYAGES,LANTERNS,WHISTLES,LOOKOUT_ROUNDS,createVoyage,stepVoyage,commandVoyage,lookoutAt,gradeLantern,gradeWhistle,loadArcade,saveArcade,ARCADE_KEY,turn } from '../src/arcade-engine.js';
+import { VOYAGES,LANTERNS,WHISTLES,LOOKOUT_ROUNDS,createVoyage,stepVoyage,commandVoyage,lookoutAt,stepLookout,gradeLantern,gradeWhistle,loadArcade,saveArcade,ARCADE_KEY,turn } from '../src/arcade-engine.js';
 import {arcadeHub,arcadeMarkup} from '../src/arcade-pages.js';
 import {COURSE_CARDS} from '../src/course.js';
 function sail(id,actions=[]){const s=createVoyage(id);s.phase='running';const pending=[...actions];for(let i=0;i<5000&&s.phase==='running';i++){while(pending.length&&s.time>=pending[0].at){const a=pending.shift();commandVoyage(s,a.h,a.speed??s.speed);}stepVoyage(s,.1);}assert.equal(s.phase,'result');return s;}
@@ -53,3 +53,9 @@ test('every game has a complete briefing and debrief without multiple-choice ans
  for(const type of ['bridge','lookout','lantern','whistle']){const items={bridge:VOYAGES,lookout:LOOKOUT_ROUNDS,lantern:LANTERNS,whistle:WHISTLES}[type];for(let index=0;index<items.length;index++)for(const phase of ['brief','running','result']){const state=type==='bridge'?createVoyage(items[index].id):{slots:[],selected:null,picks:new Set(),samples:[],blasts:[]};Object.assign(state,{type,index,phase,success:false,reason:'Разбор',samples:[]});const html=arcadeMarkup({state,progress:{}});assert.match(html,/arcade-sea/);assert.doesNotMatch(html,/data-answer=|data-drill-answer=/);}}
  const question=COURSE_CARDS.find(q=>q.rule===4);assert.doesNotMatch(question.question,/5–10/);assert.match(question.question,/Наблюдение/);assert.doesNotMatch(COURSE_CARDS.find(q=>q.rule===11).question,/12–18/);
 });
+
+ test('observation windows wait for a slow player without making the third sample unreachable',()=>{
+  const state={time:0,samples:[]};
+  for(let i=0;i<3;i++){stepLookout(state,120);assert.equal(state.time,(i+1)*10);state.samples.push({time:state.time});}
+  stepLookout(state,120);assert.equal(state.time,30);
+ });
