@@ -1,0 +1,12 @@
+{
+  "name": "deelcolreg",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Дельный МППСС — тренажёр распознавания ситуаций COLREG для deelstuff",
+  "scripts": {
+    "dev": "python3 -m http.server 4183 --bind 127.0.0.1",
+    "test": "node --test tests/*.test.js",
+    "build": "node scripts/build.js"
+  }
+}
