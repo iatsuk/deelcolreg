@@ -3,24 +3,29 @@ import {RULE_TEXT} from './rules-text.js';
 import {Sea} from './freight-sea.js';
 import {Ambience} from './freight-audio.js';
 import {practiceRound,practiceCheck} from './freight-practice.js';
+import {buildErrand} from './quest-assemble.js';
+import {PORTS,edgeBetween,neighbours,newWorld,dealOffers,settle} from './freight-world.js';
+import {renderChart,sailChart} from './freight-chart.js';
 
-const KEY='deelstuff.colreg.freight.v1',BOOK_MINUTES=5;
+const KEY='deelstuff.colreg.freight.v2',OLDKEY='deelstuff.colreg.freight.v1',BOOK_MINUTES=5,PENALTY=10;
 const root=document.getElementById('freight');
 const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
-const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{};}catch{return {};}};
+const read=key=>{try{return JSON.parse(localStorage.getItem(key));}catch{return null;}};
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(store));}catch{}};
-const store={endings:{},debts:{},active:null,...load()};
+// Earlier saves keep endings and debts; a voyage in progress cannot survive the new location ids.
+const earlier=read(OLDKEY)||{};
+const store={endings:earlier.endings||{},debts:earlier.debts||{},active:null,world:newWorld(),...read(KEY)};
 const ENDLABEL={win:'Удалось',soft:'Удалось наполовину',fail:'Провал',death:'Гибель'};
 const LAMPS=['','Белый','Красный','Зелёный'],LAMPCLASS=['off','white','red','green'];
 const SHAPES=['','шар','конус вершиной вверх','конус вершиной вниз','ромб','цилиндр','корзина'];
 const SHAPEICON=['','<circle cx="12" cy="12" r="9"/>','<path d="M12 3 21 21H3z"/>','<path d="M12 21 21 3H3z"/>','<path d="M12 2 21 12 12 22 3 12z"/>','<rect x="6" y="3" width="12" height="18"/>','<path d="M3 8h18l-3 13H6zM7 8c0-7 10-7 10 0" fill="none" stroke="currentColor" stroke-width="2"/>'];
 const shapeSvg=k=>k?`<svg viewBox="0 0 24 24" aria-hidden="true">${SHAPEICON[k]}</svg>`:'';
 
-let quests=[],q=null,state=null,sea=null,round=null,screenName='board',drawer=null;
+let quests=[],bundle=null,q=null,state=null,offer=null,sea=null,round=null,screenName='board',drawer=null,sailing=false;
 const audio=new Ambience();
 
 function shell(){
- root.innerHTML='<canvas id="sea" aria-hidden="true"></canvas><div id="hud" class="hud"></div><div id="mast" class="mast"></div><aside id="panel" class="panel"></aside><nav class="tools" aria-label="Инструменты"></nav><div id="drawer" class="drawer" hidden></div>';
+ root.innerHTML='<canvas id="sea" aria-hidden="true"></canvas><div id="chart"></div><div id="hud" class="hud"></div><div id="mast" class="mast"></div><aside id="panel" class="panel"></aside><nav class="tools" aria-label="Инструменты"></nav><div id="drawer" class="drawer" hidden></div>';
  sea=new Sea(root.querySelector('#sea'));sea.start();
  const fit=()=>{const wide=innerWidth>=900,panel=root.querySelector('#panel');sea.inset(wide?panel.offsetWidth:0);sea.resize();};
  addEventListener('resize',fit);fit();
@@ -32,30 +37,51 @@ function tools(extra=''){
  t.innerHTML=`${extra}<button data-do="rules">МППСС</button><button data-do="sound" aria-pressed="${audio.on}">${audio.on?'Звук вкл':'Звук'}</button>`;
 }
 
-// Board: the thin layer between quests. Debts are the rules the sea has already punished you for.
+// The port: what it offers and where you can go. The chart replaces the menu, passages replace practice.
+function card(label,title,brief,meta,attrs){
+ return `<button class="contract" ${attrs}><span class="eyebrow">${esc(label)}</span><strong>${esc(title)}</strong><span>${esc(brief)}</span><em>${esc(meta)}</em></button>`;
+}
 function board(){
- screenName='board';q=null;state=null;
- sea.set('port',[]);sea.own={stack:[],top:0,nav:0};
- root.className='is-board';sea.resize();
+ screenName='board';q=null;state=null;offer=null;
+ sea.stop();sea.own={stack:[],top:0,nav:0};
+ root.className='is-board';
  root.querySelector('#hud').innerHTML='';root.querySelector('#mast').innerHTML='';
+ const w=store.world,port=PORTS[w.port],live=store.active;
+ w.offers[w.port]||=dealOffers(w.port,bundle,store.debts,Math.random);save();
+ root.querySelector('#chart').innerHTML=renderChart(w.port);
  const debts=Object.entries(store.debts).sort((a,b)=>b[1].length-a[1].length);
- const found=Object.keys(store.endings).filter(k=>quests.some(x=>k.startsWith(`${x.raw.id}:`))).length,total=quests.reduce((n,x)=>n+Object.values(x.raw.locations).filter(l=>l.end).length,0);
  const contract=x=>{
-  const live=store.active?.id===x.raw.id,ends=Object.keys(store.endings).filter(k=>k.startsWith(`${x.raw.id}:`)).length,all=Object.values(x.raw.locations).filter(l=>l.end).length;
-  return `<button class="contract" data-do="quest" data-id="${x.raw.id}"><span class="eyebrow">${live?'Рейс не закончен':'Контракт'}</span><strong>${esc(x.raw.title)}</strong><span>${esc(x.raw.brief)}</span><em>${ends?`Финалов найдено: ${ends} из ${all}`:'Около 15 минут'}</em></button>`;
+  const ends=Object.keys(store.endings).filter(k=>k.startsWith(`${x.raw.id}:`)).length,all=Object.values(x.raw.locations).filter(l=>l.end).length;
+  return card('Большой контракт',x.raw.title,x.raw.brief,ends?`Финалов найдено: ${ends} из ${all}`:'Около 15 минут',`data-do="quest" data-id="${x.raw.id}"`);
  };
- root.querySelector('#panel').innerHTML=`<header class="brand"><span class="eyebrow">Дельный МППСС · прототип</span><h1>Ночной фрахт</h1><p>Портовая контора Архипелага. Заказы берут вечером, отвечают за них утром. Правила здесь не экзамен, а единственный инструмент шкипера.</p></header><section><h2>Доска заказов</h2>${quests.map(contract).join('')}</section>${debts.length?`<section class="debts"><h2>Хвосты перед инспектором</h2><p>На этих правилах вы уже попались. В море они вернутся в другом виде.</p><ul>${debts.slice(0,5).map(([rule,list])=>`<li><button class="rule-link" data-do="rule" data-rule="${esc(rule)}">Правило ${esc(rule)}</button><span>${esc(list[0])}</span></li>`).join('')}</ul></section>`:''}<section class="practice-entry"><h2>Огни на горизонте</h2><p>Пять встречных судов за пару минут. Только огни, никакого текста. Чаще покажет то, на чём вы ошибались.</p><button class="ghost" data-do="practice">Выйти на ночной переход</button></section>${found?`<p class="tally">Всего финалов найдено: ${found} из ${total}</p>`:''}`;
+ const errand=(o,i)=>{
+  const e=bundle.errands[o.errand];
+  return card(`Поручение ${o.toName}`,e.title,e.brief,`${e.pay} монет · 3–5 минут · ${edgeBetween(o.from,o.to).name}`,`data-do="offer" data-i="${i}"`);
+ };
+ const work=live?`<section><h2>Рейс не закончен</h2>${card('Продолжить',live.title,'Судно ждёт вас там, где вы его оставили.','',`data-do="resume"`)}<button class="ghost wide" data-do="abandon">Бросить рейс</button></section>`:`<section><h2>Заказы</h2>${quests.filter(x=>x.raw.route?.[0]===w.port).map(contract).join('')}${w.offers[w.port].map(errand).join('')}</section><section><h2>Куда идти</h2><div class="courses">${neighbours(w.port).map(n=>`<button class="course" data-do="course" data-to="${n.to}"><strong>${esc(PORTS[n.to].name)}</strong><span>${esc(n.edge.name)} · встреч ${n.edge.legs}</span></button>`).join('')}</div></section>`;
+ root.querySelector('#panel').innerHTML=`<header class="brand"><span class="eyebrow">Ночной фрахт · прототип</span><h1>${esc(port.name)}</h1><p>${esc(port.blurb)}</p></header><p class="purse"><span>Касса</span><strong>${w.money}</strong></p>${work}${debts.length?`<section class="debts"><h2>Хвосты перед инспектором</h2><p>На этих правилах вы уже попались. В море они будут встречаться чаще.</p><ul>${debts.slice(0,5).map(([rule,list])=>`<li><button class="rule-link" data-do="rule" data-rule="${esc(rule)}">Правило ${esc(rule)}</button><span>${esc(list[0])}</span></li>`).join('')}</ul></section>`:''}`;
  tools();
 }
 
-function open(id){
- q=quests.find(x=>x.raw.id===id);
- const saved=store.active?.id===id?store.active.state:null;
- state=saved||begin(q);
- screenName='quest';root.className='is-quest';sea.resize();
+function questFor(o){const raw=buildErrand(bundle,o),x=loadQuest(raw);x.raw=raw;return x;}
+function launch(x,o,saved){
+ q=x;offer=o;
+ const fits=saved&&q.loc[saved.loc]&&saved.v.length===q.params.length;
+ state=fits?saved:begin(q);
+ if(!fits&&q.index.money!==undefined)state.v[q.index.money]=store.world.money;
+ screenName='quest';root.className='is-quest';sea.start();sea.resize();
  render();sea.snap();
 }
-function persist(){store.active=state.end?null:{id:q.raw.id,state};save();}
+function resume(){
+ const a=store.active;
+ launch(a.offer?questFor(a.offer):quests.find(x=>x.raw.id===a.id),a.offer||null,a.state);
+}
+function persist(){store.active=state.end?null:{id:q.raw.id,title:q.raw.title,offer,state};save();}
+// The result counts when the player leaves the pier: "again" retries a voyage without paying twice.
+function dock(){
+ const w=store.world,x=q.raw,pay=x.pay||0,kept=q.index.money!==undefined?state.v[q.index.money]:w.money+(state.end==='win'?pay:state.end==='soft'?Math.floor(pay/2):0);
+ settle(w,offer||{to:x.route?.[1]||w.port},state.end,kept);save();
+}
 
 function hud(view){
  const items=view.status.map(s=>{
@@ -99,14 +125,14 @@ function endingBlock(view){
  const label=`<p class="ending ${view.end}">${ENDLABEL[view.end]}</p>`;
  const review=notes.length?`<section class="review"><h3>Разбор инспектора</h3><ul>${notes.map(rule).join('')}</ul></section>`:`<section class="review"><h3>Разбор инспектора</h3><p>Замечаний по правилам нет. Инспектора это огорчает.</p></section>`;
  const legal=q.raw.legal?`<p class="legal">${esc(q.raw.legal)}</p>`:'';
- return `${label}${review}${legal}<div class="after"><button class="primary" data-do="again">Сначала</button><button class="ghost" data-do="home">В контору</button></div>`;
+ return `${label}${review}${legal}<div class="after"><button class="primary" data-do="home">На карту</button><button class="ghost" data-do="again">Переиграть</button></div>`;
 }
 function render(){
  const view=screen(q,state);
  if(view.scene||view.see)sea.set(view.scene?.name,view.see);
  hud(view);mast(view);panel(view);
  const docs=view.docs.map(d=>`<button data-do="doc" data-id="${esc(d.id)}">${esc(d.title)}</button>`).join('');
- tools(`${docs}<button data-do="home">Контора</button>`);
+ tools(`${docs}${state.end?'':'<button data-do="home">Карта</button>'}`);
  if(state.end)finish();
  persist();
 }
@@ -151,48 +177,60 @@ function openRule(id){
  showDrawer(ruleHtml(id));
 }
 
-// Practice: lights only. Weak rules come up more often, so the debts on the board get paid at sea.
-function practice(){
- screenName='practice';root.className='is-quest is-practice';q=null;state=null;sea.resize();
+// A passage is the practice: lights only, on the water between two ports. Debts come up more often
+// and a wrong call costs money, so the rules you are weak on are paid for at sea.
+function setCourse(to){
+ if(sailing)return;
+ const from=store.world.port,edge=edgeBetween(from,to);
+ round={...practiceRound(store.debts,Math.random,edge.legs),to,edge,lost:0};
+ sailing=true;
+ sailChart(root.querySelector('#chart'),from,to,()=>{sailing=false;passage();});
+}
+function passage(){
+ screenName='passage';root.className='is-quest is-practice';q=null;state=null;
  root.querySelector('#hud').innerHTML='';root.querySelector('#mast').innerHTML='';
- round=practiceRound(store.debts);
- sea.own={stack:[],top:0,nav:0};
- practiceStep();tools('<button data-do="home">Контора</button>');
+ sea.own={stack:[],top:0,nav:0};sea.start();sea.resize();
+ sea.set(round.edge.scene||'sea',[]);sea.snap();
+ practiceStep();tools();
 }
 function practiceStep(){
  const item=round.items[round.at];
- sea.set(item.scene||'sea',[item.see]);
+ sea.set(round.edge.scene||'sea',[item.see]);
  const opts=item.options.map((o,i)=>`<button class="choice" data-do="answer" data-i="${i}"><kbd>${i+1}</kbd><span>${esc(o)}</span></button>`).join('');
- root.querySelector('#panel').innerHTML=`<div class="page"><p class="speaker">Встреча ${round.at+1} из ${round.items.length}</p><h2>${esc(item.prompt)}</h2><div class="choices">${opts}</div></div>`;
+ root.querySelector('#panel').innerHTML=`<div class="page"><p class="speaker">${esc(round.edge.name)} · огни ${round.at+1} из ${round.items.length}</p><h2>${esc(item.prompt)}</h2><div class="choices">${opts}</div></div>`;
 }
 function practiceAnswer(i){
  const item=round.items[round.at],right=practiceCheck(item,i);
  if(right){round.score++;const list=store.debts[item.rule];if(list){list.pop();if(!list.length)delete store.debts[item.rule];}}
- else{const list=store.debts[item.rule]||=[];if(!list.includes(item.lesson))list.unshift(item.lesson);}
+ else{round.lost+=PENALTY;const list=store.debts[item.rule]||=[];if(!list.includes(item.lesson))list.unshift(item.lesson);}
  save();
  const last=round.at===round.items.length-1;
- root.querySelector('#panel').innerHTML=`<div class="page"><p class="ending ${right?'win':'fail'}">${right?'Верно':'Неверно'}</p>${right?'':`<h2>${esc(item.options[item.answer])}</h2>`}<div class="prose"><p>${esc(item.lesson)}</p></div><p><button class="rule-link" data-do="rule" data-rule="${esc(item.rule)}">Правило ${esc(item.rule)}</button></p><div class="choices"><button class="choice" data-do="${last?'practice-end':'practice-next'}"><kbd>1</kbd><span>${last?'Закончить переход':'Следующие огни'}</span></button></div></div>`;
+ root.querySelector('#panel').innerHTML=`<div class="page"><p class="ending ${right?'win':'fail'}">${right?'Верно':`Неверно · −${PENALTY} монет`}</p>${right?'':`<h2>${esc(item.options[item.answer])}</h2>`}<div class="prose"><p>${esc(item.lesson)}</p></div><p><button class="rule-link" data-do="rule" data-rule="${esc(item.rule)}">Правило ${esc(item.rule)}</button></p><div class="choices"><button class="choice" data-do="${last?'practice-end':'practice-next'}"><kbd>1</kbd><span>${last?`Прийти ${esc(PORTS[round.to].to)}`:'Дальше по курсу'}</span></button></div></div>`;
 }
 function practiceEnd(){
- root.querySelector('#panel').innerHTML=`<div class="page"><h2>Переход окончен</h2><div class="prose"><p>Опознано ${round.score} из ${round.items.length}.</p></div><div class="after"><button class="primary" data-do="practice">Ещё переход</button><button class="ghost" data-do="home">В контору</button></div></div>`;
+ const w=store.world;
+ settle(w,{to:round.to},'win',w.money-round.lost);save();round=null;board();
 }
 
 function onClick(e){
  if(e.target.id==='drawer'){closeDrawer();return;}
  const b=e.target.closest('[data-do]');if(!b||b.disabled)return;
- const {do:action,id,i,mode,what,rule}=b.dataset;
- if(action==='quest')open(id);
+ const {do:action,id,i,mode,what,rule,to}=b.dataset;
+ if(action==='quest')launch(quests.find(x=>x.raw.id===id),null,null);
+ else if(action==='offer'){const o=store.world.offers[store.world.port][+i];launch(questFor(o),o,null);}
+ else if(action==='resume')resume();
+ else if(action==='abandon'){store.active=null;save();board();}
+ else if(action==='course')setCourse(to);
  else if(action==='choice')choose(id);
  else if(action==='slot')slotNext(+i,mode);
  else if(action==='flip')flip(what,mode);
- else if(action==='home')board();
- else if(action==='again'){const x=q.raw.id;store.active=null;save();open(x);}
+ else if(action==='home'){if(state?.end)dock();board();}
+ else if(action==='again'){const x=q,o=offer;store.active=null;save();launch(x,o,null);}
  else if(action==='rule')openRule(rule);
  else if(action==='rules')bookIndex();
  else if(action==='close')closeDrawer();
  else if(action==='doc'){const d=q.raw.docs.find(x=>x.id===id);showDrawer(`<h2>${esc(d.title)}</h2><ul class="doc">${d.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`);}
- else if(action==='sound'){audio.toggle();tools(screenName==='board'?'':`<button data-do="home">Контора</button>`);}
- else if(action==='practice')practice();
+ else if(action==='sound'){audio.toggle();if(screenName==='quest')render();else tools();}
  else if(action==='answer')practiceAnswer(+i);
  else if(action==='practice-next'){round.at++;practiceStep();}
  else if(action==='practice-end')practiceEnd();
@@ -200,13 +238,15 @@ function onClick(e){
 function onKey(e){
  if(e.key==='Escape'&&drawer){closeDrawer();return;}
  if(drawer||e.metaKey||e.ctrlKey||e.altKey)return;
+ if((e.key==='Enter'||e.key===' ')&&e.target.closest?.('.port.go')){e.preventDefault();setCourse(e.target.closest('.port.go').dataset.to);return;}
  const n=Number(e.key);
  if(n>=1&&n<=9){const b=root.querySelectorAll('#panel .choice:not([disabled])')[n-1];if(b)b.click();}
 }
 
-const catalog=await (await fetch(new URL('../quests/freight/catalog.json',import.meta.url))).json();
+const fetchJson=async path=>(await fetch(new URL(`../quests/freight/${path}`,import.meta.url))).json();
+const catalog=await fetchJson('catalog.json');
+bundle=await fetchJson(catalog.errands);
 for(const path of catalog.quests){
- const raw=await (await fetch(new URL(`../quests/freight/${path}`,import.meta.url))).json();
- const x=loadQuest(raw);x.raw=raw;quests.push(x);
+ const raw=await fetchJson(path),x=loadQuest(raw);x.raw=raw;quests.push(x);
 }
 shell();board();

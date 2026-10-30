@@ -1,5 +1,7 @@
 // .quest source -> JSON for src/quest-vm.js. The format is line-based on purpose: prose stays readable,
 // structure stays greppable, and a model or a person can edit one location without touching the rest.
+import {splice} from '../../src/quest-assemble.js';
+
 const fail=(n,msg)=>{throw new Error(`строка ${n}: ${msg}`);};
 
 function parseEffects(src,fxs,n){
@@ -25,10 +27,13 @@ function keyValues(src){
  return out;
 }
 
-export function compileQuest(source){
+export function compileQuest(source,{load}={}){
  const q={id:null,title:'',brief:'',rules:[],params:[],defs:{},crit:[],locations:{},start:null,mast:{}};
- const fxs={};
- const lines=source.split('\n');
+ const fxs={},uses=[];
+ const lines=source.split('\n').flatMap(line=>{
+  const inc=line.trim().match(/^include\s+([\w-]+)$/);
+  return inc?load(inc[1]).split('\n'):[line];
+ });
  let L=null,choice=null,para=[],paraWhen=null,param=null,paraAt=0;
  const flush=()=>{
   if(!para.length)return;
@@ -43,6 +48,15 @@ export function compileQuest(source){
   if(!L){
    let m;
    if((m=t.match(/^quest\s+([\w-]+)$/)))q.id=m[1];
+   else if((m=t.match(/^encounter\s+([\w-]+)$/))){q.id=m[1];q.kind='encounter';}
+   else if((m=t.match(/^errand\s+([\w-]+)$/))){q.id=m[1];q.kind='errand';}
+   else if((m=t.match(/^route\s+(\w+)\s+(\w+)$/)))q.route=[m[1],m[2]];
+   else if((m=t.match(/^routes\s+(.+)$/)))q.routes=m[1].split(/\s+/).map(x=>x.split('-'));
+   else if((m=t.match(/^pay\s+(\d+)$/)))q.pay=+m[1];
+   else if((m=t.match(/^perleg\s+(\d+)$/)))q.perleg=+m[1];
+   else if((m=t.match(/^set\s+(.+)$/)))q.set=keyValues(m[1]);
+   else if((m=t.match(/^cargo\s+"([^"]*)"$/))){q.cargo={label:m[1],ranges:[]};param=q.cargo;}
+   else if((m=t.match(/^use\s+([\w-]+)(?:\s+as\s+([\w-]+))?\s+exit=([\w-]+)$/)))uses.push({name:m[1],as:m[2]||m[1],exit:m[3]});
    else if((m=t.match(/^title\s+(.+)$/)))q.title=m[1];
    else if((m=t.match(/^brief\s+(.+)$/)))q.brief=m[1];
    else if((m=t.match(/^legal\s+(.+)$/)))q.legal=m[1];
@@ -57,7 +71,8 @@ export function compileQuest(source){
     param={id:m[1],label:m[2],min:+m[3],max:+m[4],start:+m[5],ranges:[]};
     if(/\bhidden\b/.test(flags))param.hidden=true;
     Object.assign(param,keyValues(flags));
-    q.params.push(param);
+    const at=q.params.findIndex(p=>p.id===param.id);
+    if(at>=0)q.params[at]=param;else q.params.push(param);
    }
    else if((m=t.match(/^\|\s*(-?\d+)\.\.(-?\d+)\s+(.+)$/))){if(!param)fail(n,'диапазон без параметра');param.ranges.push({from:+m[1],to:+m[2],text:m[3]});}
    else if((m=t.match(/^def\s+(\w+)\s*=\s*(.+)$/)))q.defs[m[1]]=m[2];
@@ -124,6 +139,7 @@ export function compileQuest(source){
   q.locations[id]={text:[],choices:[],auto:[{when:null,to:fan,fx:[]}],on:[],notes:[]};
  }
  q.start||=Object.keys(q.locations)[0];
+ for(const u of uses)splice(q,compileQuest(load(u.name),{load}),u.as,u.exit);
  for(const [id,l] of Object.entries(q.locations))for(const c of l.choices)if(!c.to)fail(c.line,`у выбора «${c.text}» в ${id} нет перехода ->`);
  return q;
 }

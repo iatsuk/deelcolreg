@@ -3,13 +3,17 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {loadQuest,begin,take,choices,screen,outcomes,starts,mastWrite,mastConfigs,compileExpr} from '../src/quest-vm.js';
 import {compileQuest} from '../tools/questlab/compile.js';
+import {compile,makeBundle} from '../tools/questlab/files.js';
 import {analyse} from '../tools/questlab/solve.js';
 import {lint} from '../tools/questlab/lint.js';
 import {fromLegacy} from '../tools/questlab/legacy.js';
 import {visibleLights} from '../src/freight-sea.js';
 import {practiceRound,practiceCheck} from '../src/freight-practice.js';
+import {buildErrand,splice} from '../src/quest-assemble.js';
+import {PORTS,EDGES,edgeBetween,neighbours,newWorld,dealOffers,pickEncounters,settle} from '../src/freight-world.js';
+import {renderChart} from '../src/freight-chart.js';
 
-const build=src=>{const raw=compileQuest(src),q=loadQuest(raw);q.raw=raw;return q;};
+const build=src=>{const raw=compile(src),q=loadQuest(raw);q.raw=raw;return q;};
 const seeded=n=>{let r=n>>>0;return ()=>{r=(r+0x6D2B79F5)>>>0;let t=r;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;};};
 const source=await readFile(new URL('../quests/freight/plombir.quest',import.meta.url),'utf8');
 const plombir=()=>build(source);
@@ -97,7 +101,9 @@ test('the linter catches telegraphed answers and quiet-literary tics',()=>{
 });
 test('the compiled quest in the repository matches its source',async()=>{
  const built=JSON.parse(await readFile(new URL('../quests/freight/plombir.json',import.meta.url),'utf8'));
- assert.deepEqual(built,JSON.parse(JSON.stringify(compileQuest(source))));
+ assert.deepEqual(built,JSON.parse(JSON.stringify(compile(source))));
+ const bundle=JSON.parse(await readFile(new URL('../quests/freight/errands.json',import.meta.url),'utf8'));
+ assert.deepEqual(bundle,JSON.parse(JSON.stringify(makeBundle())));
 });
 test('three hundred random voyages all end in an ending',()=>{
  const q=plombir(),ends=new Set();
@@ -133,8 +139,8 @@ test('a skipper who reads the lights brings the cargo in solid',()=>{
  s=go(q,s,/Средним/);s=go(q,s,/Дальше/);s=go(q,s,/Обойти его/);
  s=go(q,s,/Средним/);s=go(q,s,/Дальше/);s=go(q,s,/Заглушить/);
  s=go(q,s,/Средним/);s=go(q,s,/Дальше/);
- assert.equal(s.loc,'cross__');
- s=go(q,s,/Держать курс/);s=go(q,s,/Идти на рейд/);
+ assert.equal(s.loc,'cross.cross__');
+ s=go(q,s,/Держать курс/);s=go(q,s,/Дальше/);
  assert.equal(s.loc,'dawn');
  s=set(q,s,[6],0,0,'shapes');s=go(q,s,/Поднять знаки/);
  assert.equal(s.loc,'dawn-ok');
@@ -153,16 +159,16 @@ test('rule mistakes end the voyage the way the rule says',()=>{
  const hit=go(q,s,/Держать середину/);
  assert.equal(hit.end,'death');assert.ok(hit.notes.some(n=>n.rule==='18'));
  s=go(q,s,/правой кромке/);
- assert.equal(s.loc,'pilotcall','белый над красным в проливе делает вас лоцманом');
+ assert.equal(s.loc,'tanker.pilotcall','белый над красным в проливе делает вас лоцманом');
 });
 test('the stand-on duty depends on what the mast claims',()=>{
  const q=plombir();
- const at=(slots,top,side)=>{const s=begin(q,()=>.5),n={...s,loc:'cross__',v:s.v.slice()};n.v[q.index.side]=side;return set(q,n,slots,top,1);};
- assert.equal(go(q,at([2,1],0,1),/Держать курс/).loc,'cross-held');
- assert.equal(go(q,at([],1,1),/Держать курс/).loc,'cross-near');
- assert.equal(go(q,at([],1,2),/Держать курс/).loc,'cross-held');
- assert.equal(go(q,at([],1,1),/вправо/).loc,'cross-gave');
- assert.equal(go(q,at([2,1],0,1),/вправо/).loc,'cross-flinch');
+ const at=(slots,top,side)=>{const s=begin(q,()=>.5),n={...s,loc:'cross.cross__',v:s.v.slice()};n.v[q.index.side]=side;return set(q,n,slots,top,1);};
+ assert.equal(go(q,at([2,1],0,1),/Держать курс/).loc,'cross.cross-held');
+ assert.equal(go(q,at([],1,1),/Держать курс/).loc,'cross.cross-near');
+ assert.equal(go(q,at([],1,2),/Держать курс/).loc,'cross.cross-held');
+ assert.equal(go(q,at([],1,1),/вправо/).loc,'cross.cross-gave');
+ assert.equal(go(q,at([2,1],0,1),/вправо/).loc,'cross.cross-flinch');
 });
 test('lights on screen follow the sectors of Rule 21',()=>{
  assert.equal(visibleLights('patrol',-52),'wr');
@@ -184,4 +190,101 @@ test('practice deals tripped rules more often and grades by the shuffled answer'
  assert.ok(hits>base*1.3,`${hits} против ${base}`);
  const r=practiceRound({},rand);
  for(const item of r.items){assert.equal(item.options[item.answer],item.answer===item.options.indexOf(item.options[item.answer])?item.options[item.answer]:null);assert.ok(practiceCheck(item,item.answer));assert.ok(!practiceCheck(item,(item.answer+1)%item.options.length));}
+});
+
+const bundle=makeBundle();
+const permutations=(list,n)=>n?list.flatMap(x=>permutations(list.filter(y=>y!==x),n-1).map(rest=>[x,...rest])):[[]];
+const errandOffers=()=>Object.values(bundle.errands).flatMap(e=>e.routes.flatMap(([from,to])=>permutations(edgeBetween(from,to).deck,edgeBetween(from,to).legs).map(picks=>({errand:e.id,from,to,picks,fromName:PORTS[from].name,toName:PORTS[to].to}))));
+const errandQuest=o=>{const raw=buildErrand(bundle,o),q=loadQuest(raw);q.raw=raw;return q;};
+
+test('a fragment keeps its text and returns to the host through exit',()=>{
+ const host={params:[],defs:{},locations:{back:{}}};
+ const f=compileQuest(`encounter x\nparam side "б" 0..1 =0 hidden\n== main\nТекст.\n* Вперёд\n  -> inner\n== inner\n> -> exit\n`);
+ splice(host,f,'a','back');
+ assert.equal(host.locations.a.choices[0].to[0].id,'a.inner');
+ assert.equal(host.locations['a.inner'].auto[0].to[0].id,'back');
+ assert.equal(host.params[0].id,'side');
+});
+test('every errand route is a real passage and every encounter it needs exists',()=>{
+ for(const e of Object.values(bundle.errands))for(const [from,to] of e.routes){assert.ok(PORTS[from]&&PORTS[to],e.id);assert.ok(edgeBetween(from,to),`${e.id}: ${from}-${to}`);}
+ for(const edge of EDGES){assert.ok(edge.deck.length>=edge.legs,edge.name);for(const name of edge.deck)assert.ok(bundle.deck[name],name);}
+ for(const port of Object.keys(PORTS))assert.ok(Object.values(bundle.errands).some(e=>e.routes.some(r=>r[0]===port)),`из ${PORTS[port].name} нет поручений`);
+});
+test('all sixty deals assemble, and random play always reaches an ending',()=>{
+ const offers=errandOffers();
+ assert.equal(offers.length,60);
+ for(const o of offers){
+  const q=errandQuest(o),rand=seeded(o.picks.join().length+o.errand.length);
+  assert.ok(!JSON.stringify(q.raw).includes('{{'),o.errand);
+  for(let run=0;run<4;run++){
+   let s=begin(q,rand),steps=0;
+   while(!s.end&&steps++<120){
+    const L=q.loc[s.loc];
+    if(L.mast){const list=mastConfigs(q,L.mast,s.v);s=mastWrite(q,L.mast,s,list[Math.floor(rand()*list.length)]);}
+    const list=choices(q,s).filter(c=>c.enabled);
+    s=take(q,s,list[Math.floor(rand()*list.length)].id,rand);
+   }
+   assert.ok(s.end,`${o.errand} ${o.picks} застряло в ${s.loc}`);
+  }
+ }
+});
+test('one deal per route is winnable and punishes guessing',()=>{
+ for(const e of Object.values(bundle.errands))for(const [from,to] of e.routes){
+  const a=analyse(errandQuest({errand:e.id,from,to,picks:edgeBetween(from,to).deck.slice(0,edgeBetween(from,to).legs),toName:PORTS[to].to}));
+  assert.ok(a.optimal>=.8,`${e.id}: лучшая игра ${a.optimal}`);
+  assert.ok(a.random<=.3,`${e.id}: наугад ${a.random}`);
+  assert.deepEqual(a.deadEnds,[]);
+ }
+});
+test('a delivered errand pays exactly what the board promised',()=>{
+ const o={errand:'piano',from:'old',to:'fish',picks:['yacht','cross'],toName:PORTS.fish.to};
+ const q=errandQuest(o),rand=()=>.5;
+ let s=go(q,begin(q,rand),/Взять рояль/);
+ assert.equal(s.loc,'helm');
+ assert.match(screen(q,s).paragraphs.join(' '),/Участок 1 из 2/);
+ s=go(q,s,/Средним/);s=go(q,s,/Дальше/);
+ assert.equal(s.loc,'s1');
+ s=go(q,s,/Обойти его/);s=go(q,s,/закрепить/);
+ assert.equal(s.loc,'helm');
+ s=go(q,s,/Средним/);s=go(q,s,/Дальше/);
+ assert.equal(s.loc,'s2.cross__');
+ s=go(q,s,screen(q,s).paragraphs[0].startsWith('Справа')?/вправо/:/Держать курс/);s=go(q,s,/Дальше/);
+ assert.equal(s.loc,'win');assert.equal(s.end,'win');
+ assert.equal(s.v[q.index.money],120+bundle.errands.piano.pay);
+});
+test('the same encounter reads differently under different cargo',()=>{
+ const tanker=bundle.deck.tanker.locations.collision.text.map(p=>p.when||'').join();
+ assert.match(tanker,/ice==1/);assert.match(tanker,/ice==0/);
+});
+test('ports deal offers along real passages, one encounter per leg',()=>{
+ const rand=seeded(3);
+ for(const port of Object.keys(PORTS)){
+  const offers=dealOffers(port,bundle,{},rand);
+  assert.ok(offers.length>=1,port);
+  for(const o of offers){
+   assert.equal(o.from,port);
+   const edge=edgeBetween(o.from,o.to);
+   assert.equal(o.picks.length,edge.legs);assert.equal(new Set(o.picks).size,o.picks.length);
+   for(const p of o.picks)assert.ok(edge.deck.includes(p));
+  }
+ }
+});
+test('rules the player tripped on are dealt into errands more often',()=>{
+ const edge=edgeBetween('old','far'),rand=seeded(11);let hit=0,base=0;
+ const small={...edge,legs:1};
+ for(let i=0;i<600;i++){if(pickEncounters(small,bundle.deck,{24:['x']},rand)[0]==='tow')hit++;if(pickEncounters(small,bundle.deck,{},rand)[0]==='tow')base++;}
+ assert.ok(hit>base*1.5,`${hit} против ${base}`);
+});
+test('the world moves with the boat and a wreck goes home',()=>{
+ const w=newWorld();w.offers.fish=[{}];
+ settle(w,{to:'fish'},'win',300);
+ assert.equal(w.port,'fish');assert.equal(w.money,300);assert.equal(w.trips,1);assert.equal(w.offers.fish,undefined);
+ settle(w,{to:'far'},'death',-40);
+ assert.equal(w.port,'old');assert.equal(w.money,0);
+ assert.deepEqual(neighbours('light').map(n=>n.to).sort(),['far','fish']);
+});
+test('the chart draws every port and marks only reachable ones',()=>{
+ const svg=renderChart('old');
+ for(const p of Object.values(PORTS))assert.ok(svg.includes(p.name),p.name);
+ assert.ok(svg.includes('data-to="fish"'));assert.ok(svg.includes('data-to="far"'));assert.ok(!svg.includes('data-to="light"'));
 });

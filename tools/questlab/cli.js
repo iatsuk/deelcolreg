@@ -4,7 +4,9 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {dirname,basename,join} from 'node:path';
 import {loadQuest,begin,take,screen,choices,mastConfigs,mastWrite,mastRead,fill} from '../../src/quest-vm.js';
 import {RULE_TEXT} from '../../src/rules-text.js';
-import {compileQuest} from './compile.js';
+import {compile,makeBundle} from './files.js';
+import {buildErrand} from '../../src/quest-assemble.js';
+import {EDGES,edgeBetween,PORTS} from '../../src/freight-world.js';
 import {analyse} from './solve.js';
 import {lint} from './lint.js';
 import {fromLegacy} from './legacy.js';
@@ -15,7 +17,7 @@ const seeded=seed=>{let r=seed>>>0;return ()=>{r=(r+0x6D2B79F5)>>>0;let t=r;t=Ma
 
 async function open(path){
  const src=await readFile(path,'utf8');
- const raw=path.endsWith('.json')?fromLegacy(JSON.parse(src)):compileQuest(src);
+ const raw=path.endsWith('.json')?fromLegacy(JSON.parse(src)):compile(src);
  const q=loadQuest(raw);q.raw=raw;return q;
 }
 
@@ -110,6 +112,68 @@ function graph(q){
  console.log('}');
 }
 
+const permutations=(list,n)=>n?list.flatMap(x=>permutations(list.filter(y=>y!==x),n-1).map(rest=>[x,...rest])):[[]];
+
+// Every errand on every route with every deal: the assembled quests are small enough to solve exactly.
+function deck(){
+ const bundle=makeBundle();
+ console.log(`${'поручение'.padEnd(16)}${'маршрут'.padEnd(13)}${'сборок'.padStart(7)}${'лучшая мин'.padStart(11)}${'наугад макс'.padStart(12)}${'длинн макс'.padStart(11)}${'значим мин'.padStart(11)}`);
+ let bad=0;
+ for(const e of Object.values(bundle.errands))for(const [from,to] of e.routes){
+  const edge=edgeBetween(from,to),rows=[];
+  for(const picks of permutations(edge.deck,edge.legs)){
+   const raw=buildErrand(bundle,{errand:e.id,from,to,picks,toName:PORTS[to].to,fromName:PORTS[from].name}),q=loadQuest(raw);q.raw=raw;
+   const a=analyse(q);rows.push({picks,a});
+   const missing=['win','soft'].filter(x=>a.unreachable.includes(x));
+   if(missing.length||a.deadEnds.length){console.log(`  ${e.id} ${picks}: не достигается ${missing} тупики ${a.deadEnds}`);bad++;}
+  }
+  const min=f=>Math.min(...rows.map(r=>f(r.a))),max=f=>Math.max(...rows.map(r=>f(r.a)));
+  console.log(`${e.id.padEnd(16)}${`${from}-${to}`.padEnd(13)}${String(rows.length).padStart(7)}${pct(min(a=>a.optimal)).padStart(11)}${pct(max(a=>a.random)).padStart(12)}${pct(max(a=>a.longest)).padStart(11)}${pct(min(a=>a.meaningful)).padStart(11)}`);
+  if(min(a=>a.optimal)<gates.errandMinOptimal||max(a=>a.random)>gates.errandMaxRandom||max(a=>a.longest)>gates.errandMaxLongest)bad++;
+ }
+ for(const [name,f] of Object.entries(bundle.deck)){
+  const l=lint(f);for(const i of l.issues)console.log(`  ${name}: [${i.kind}] ${i.why}`);
+ }
+ for(const e of Object.values(bundle.errands)){const l=lint(e);for(const i of l.issues)console.log(`  ${e.id}: [${i.kind}] ${i.why} ${i.where.slice(0,2).join(' | ')}`);}
+ console.log(bad?`\nНиже порога: ${bad} сочетаний поручения и маршрута`:'\nВсе поручения проходят пороги');
+ return !bad;
+}
+
+// Which rules the whole game actually tests, and where. Holes here decide what to write next.
+async function coverage(){
+ const bundle=makeBundle(),sources=[];
+ for(const f of ['plombir','varvara'])sources.push(['контракт',f,compile(await readFile(new URL(`../../quests/freight/${f}.quest`,import.meta.url),'utf8'))]);
+ for(const [n,f] of Object.entries(bundle.deck))sources.push(['встреча',n,f]);
+ for(const [n,f] of Object.entries(bundle.errands))sources.push(['поручение',n,f]);
+ const seen=new Set(),rows=new Map();
+ const hit=(rule,kind,name,trap)=>{const r=rows.get(rule)||{where:new Set(),decisions:0,traps:0};r.where.add(name);if(kind)r.decisions++;if(trap)r.traps++;rows.set(rule,r);};
+ for(const [,name,raw] of sources){
+  if(seen.has(name))continue;seen.add(name);
+  for(const l of Object.values(raw.locations)){
+   for(const t of l.tags||[])if(/^r\d+$/.test(t))hit(+t.slice(1),true,name,false);
+   for(const n of l.notes||[])if(/^\d+$/.test(n.rule))hit(+n.rule,false,name,false);
+   for(const c of l.choices||[]){
+    const trap=(c.tags||[]).some(t=>t.startsWith('trap:'));
+    for(const t of c.tags||[])if(/^r\d+$/.test(t))hit(+t.slice(1),true,name,trap);
+    for(const n of c.notes||[])if(/^\d+$/.test(n.rule))hit(+n.rule,false,name,false);
+   }
+  }
+ }
+ console.log(`${'прав.'.padEnd(6)}${'название'.padEnd(44)}${'решений'.padStart(8)}${'ловушек'.padStart(8)}  где`);
+ let covered=0,trapped=0;
+ for(const r of RULE_TEXT){
+  const x=rows.get(r.id);
+  if(x){covered++;if(x.traps)trapped++;}
+  console.log(`${String(r.id).padEnd(6)}${r.title.slice(0,42).padEnd(44)}${String(x?.decisions||'').padStart(8)}${String(x?.traps||'').padStart(8)}  ${x?[...x.where].join(' '):'—'}`);
+ }
+ console.log(`\nПокрыто ${covered} из ${RULE_TEXT.length}, с ловушками ${trapped}. Поручений ${Object.keys(bundle.errands).length}, встреч ${Object.keys(bundle.deck).length}, переходов ${EDGES.length}.`);
+}
+
+async function buildBundle(){
+ const out=new URL('../../quests/freight/errands.json',import.meta.url),bundle=makeBundle();
+ await writeFile(out,`${JSON.stringify(bundle)}\n`);console.log(`errands.json: ${(JSON.stringify(bundle).length/1024).toFixed(1)} КБ`);
+}
+
 async function build(path){
  const q=await open(path),out=join(dirname(path),`${basename(path,'.quest')}.json`);
  await writeFile(out,`${JSON.stringify(q.raw)}\n`);console.log(`${out}: ${(JSON.stringify(q.raw).length/1024).toFixed(1)} КБ`);
@@ -123,7 +187,10 @@ ql compare <файл>...  таблица для нескольких квест�
 ql play <файл> [--new] [--move 2] [--seed 1]  сыграть вслепую по одному ходу
 ql facts <файл>       места, помеченные правилами, рядом с текстом МППСС
 ql graph <файл>       граф в формате DOT
-ql build <файл>       собрать .quest в .json для игры`;
+ql build <файл>       собрать .quest в .json для игры
+ql bundle             собрать колоду, шаблон и поручения в errands.json
+ql deck               проверить все поручения на всех маршрутах со всеми раскладами
+ql coverage           матрица: какие правила проверяются и где`;
 try{
  if(cmd==='check'){let ok=true;for(const f of files)ok=report(await open(f))&&ok;process.exitCode=ok?0:1;}
  else if(cmd==='compare'){
@@ -134,5 +201,8 @@ try{
  else if(cmd==='facts')facts(await open(files[0]));
  else if(cmd==='graph')graph(await open(files[0]));
  else if(cmd==='build')for(const f of files)await build(f);
+ else if(cmd==='bundle')await buildBundle();
+ else if(cmd==='deck')process.exitCode=deck()?0:1;
+ else if(cmd==='coverage')await coverage();
  else console.log(usage);
 }catch(e){console.error(`Ошибка: ${e.message}`);process.exitCode=2;}

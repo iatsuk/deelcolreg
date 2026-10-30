@@ -6,6 +6,44 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 button:focus-visible{outline:2px solid var(--white);outline-offset:2px}
 #freight{position:fixed;inset:0;overflow:hidden}
 #sea{position:absolute;inset:0;width:100%;height:100%;display:block}
+#chart{position:absolute;top:0;bottom:0;left:0;right:clamp(420px,46vw,560px);display:none;background:#070d16;z-index:1}
+.is-board #chart{display:block}
+#chart svg{width:100%;height:100%;display:block}
+#chart .water{fill:#070d16}
+#chart .grid{stroke:rgba(150,180,210,.05);stroke-width:1;fill:none}
+#chart .soundings text{font:9px var(--mono);fill:rgba(150,180,210,.2);text-anchor:middle}
+#chart .soundings .shoal{fill:rgba(255,200,118,.42)}
+#chart .isobath{fill:none;stroke:rgba(150,180,210,.1);stroke-width:1;stroke-dasharray:2 5}
+#chart .land{fill:#121b28;stroke:rgba(190,210,230,.28);stroke-width:1}
+#chart .bank{fill:rgba(255,200,118,.035);stroke:rgba(255,200,118,.3);stroke-width:1;stroke-dasharray:3 4}
+#chart .rose line{stroke:rgba(190,210,230,.26);stroke-width:1}
+#chart .rose circle{fill:none;stroke:rgba(190,210,230,.26)}
+#chart .rose text{font:600 11px var(--sans);fill:rgba(190,210,230,.5);text-anchor:middle}
+#chart .edge{fill:none;stroke:rgba(236,230,217,.14);stroke-width:1.2;stroke-dasharray:5 7}
+#chart .edge.live{stroke:rgba(255,242,214,.62);stroke-width:1.5}
+#chart .edge-name{font:italic 13px var(--serif);fill:rgba(170,190,210,.34);text-anchor:middle}
+#chart .edge-name.live{fill:rgba(255,242,214,.8)}
+#chart .port text{font:600 14px var(--sans);fill:rgba(236,230,217,.66);text-anchor:middle;paint-order:stroke;stroke:#070d16;stroke-width:4px}
+#chart .port .dot{fill:rgba(236,230,217,.5)}
+#chart .port .halo{fill:transparent}
+#chart .port.go{cursor:pointer}
+#chart .port.go .dot{fill:var(--white)}
+#chart .port.go text{fill:var(--text)}
+#chart .port.go:hover .halo,#chart .port.go:focus .halo{fill:rgba(255,242,214,.12)}
+#chart .port.go:focus{outline:none}
+#chart .port.here .dot{fill:var(--amber)}
+#chart .port.here text{fill:var(--amber)}
+#chart #boat path{fill:var(--white);filter:drop-shadow(0 0 5px rgba(255,242,214,.8))}
+.purse{display:flex;align-items:baseline;gap:12px;margin:-12px 0 0}
+.purse span{font:600 11px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.purse strong{font:400 22px/1 var(--mono);color:var(--white)}
+.courses{display:grid;gap:8px}
+.course{display:grid;gap:3px;width:100%;text-align:left;padding:12px 16px;border:1px solid var(--line);border-radius:4px}
+.course strong{font:600 15px/1.3 var(--sans)}
+.course span{font:400 13px/1.3 var(--sans);color:var(--muted)}
+.course:hover{border-color:var(--white)}
+.contract+.contract{margin-top:8px}
+.wide{width:100%;margin-top:8px}
 .eyebrow{font:600 11px/1.3 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .panel{position:absolute;top:0;right:0;bottom:0;width:min(46vw,560px);min-width:420px;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--faint) transparent}
 .page{min-height:100%;display:flex;flex-direction:column;padding:64px 44px 28px}
@@ -120,10 +158,14 @@ button:focus-visible{outline:2px solid var(--white);outline-offset:2px}
  .side{width:124px}
  .toggle{padding:5px 7px;font-size:11.5px}
  .stock{display:none}
- .is-board .panel{top:30%;padding:22px 18px;gap:22px}
- .is-board #sea{height:30%}
- .is-board .tools{bottom:calc(70% + 8px)}
- .brand h1{font-size:42px}
+ #chart{right:0;bottom:64%}
+ #chart .port text{font-size:25px;stroke-width:6px}
+ #chart .edge-name{font-size:21px}
+ #chart .soundings,#chart .rose{display:none}
+ .is-board .panel{top:36%;padding:22px 18px;gap:22px}
+ .is-board .tools{bottom:calc(64% + 8px)}
+ .brand h1{margin-top:8px}
+ .brand h1{font-size:36px}
  .drawer-box{padding:52px 18px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}

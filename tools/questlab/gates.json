@@ -10,5 +10,8 @@
   "minMeaningful": 0.25,
   "maxFalseChoice": 0.25,
   "minRuleCost": 0.1,
-  "minTrapCost": 0.1
+  "minTrapCost": 0.1,
+  "errandMinOptimal": 0.8,
+  "errandMaxRandom": 0.3,
+  "errandMaxLongest": 0.55
 }

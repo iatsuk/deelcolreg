@@ -1,0 +1,31 @@
+// Everything a voyage on «Бойкая» shares: the clock, the inspector, the mast and what its lights claim.
+mast lights slots=m1,m2,m3 top=top nav=nav stock=lw,lr,lg values=3
+param t "Время" 1200..1900 =1260 fmt=clock
+param pl "Груз" 0..100 =100 kind=cargo
+param sus "Инспектор" 0..100 =0 kind=threat
+| 0..19 Зевает
+| 20..39 Надел очки
+| 40..59 Листает журнал
+| 60..79 Достал линейку
+| 80..100 Идёт к вам
+param money "Касса" 0..9000 =120 fmt=money
+param spd "ход" 1..3 =2 hidden
+param m1 "огонь 1" 0..3 =0 hidden
+param m2 "огонь 2" 0..3 =0 hidden
+param m3 "огонь 3" 0..3 =0 hidden
+param top "топовый" 0..1 =0 hidden
+param nav "бортовые и кормовой" 0..1 =0 hidden
+param lw "белых" 0..4 =1 hidden
+param lr "красных" 0..4 =1 hidden
+param lg "зелёных" 0..4 =0 hidden
+param ice "пломбир на борту" 0..1 =0 hidden
+
+def stackless = m1==0
+def plain = stackless and top==1 and nav==1
+def dark = stackless and top==0 and nav==0
+def fish = m1==2 and m2==1 and m3==0 and top==0 and nav==1
+def fishtop = m1==2 and m2==1 and m3==0 and top==1 and nav==1
+def trawl = m1==3 and m2==1 and m3==0 and nav==1
+def pilot = m1==1 and m2==2 and m3==0 and top==0 and nav==1
+def anch = m1==1 and m2==0 and top==0 and nav==0
+def fishy = fish or trawl or fishtop
