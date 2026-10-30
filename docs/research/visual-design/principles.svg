@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1040" viewBox="0 0 1440 1040" role="img" aria-labelledby="title desc">
+<title id="title">Визуальный язык Дельного МППСС: три принципа</title>
+<desc id="desc">Поясняющая схема: подробный берег и спокойная вода, разные обозначения наблюдения и плана, контрастные подписи. Сравнение контраста текущего текста с предлагаемым и пример искажения угла в наклонной проекции. Это не прототип игры и не задача на расхождение.</desc>
+<defs>
+ <pattern id="sea" width="90" height="65" patternUnits="userSpaceOnUse"><path d="M15 42q12-5 24 0" fill="none" stroke="#b7c9c4" stroke-width="1" opacity=".14"/></pattern>
+ <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10" fill="none" stroke="#f5d893" stroke-width="2"/></marker>
+ <marker id="inkArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10" fill="none" stroke="#213f43" stroke-width="2"/></marker>
+ <g id="house"><path d="M0 0l33 18v29L0 30Z" fill="#e6d5b5"/><path d="M33 18l28-16v29L33 47Z" fill="#baa98c"/><path d="M-5 0L24-20 63 2 33 22Z" fill="#b36d50"/><path d="M8 15l9 5v11l-9-5Zm31 11 10-6v11l-10 6Z" fill="#425f5b"/></g>
+ <g id="tree"><path d="M0 0v25" stroke="#6f7056" stroke-width="5"/><path d="M-22 1L0-40 22 1Z" fill="#547969"/><path d="M0-40V1H22Z" fill="#42695e"/></g>
+ <g id="boat"><path d="M-11 22-13-10Q-8-30 0-39Q8-30 13-10L11 22Q0 30-11 22Z" fill="#f2ebdd" stroke="#173d45" stroke-width="3"/><path d="M-7-7H7V13H-7Z" fill="#cb825e"/><path d="M0-26V-10" stroke="#213f43" stroke-width="2"/></g>
+</defs>
+<rect width="1440" height="1040" fill="#f2ebdd"/>
+<g font-family="Arial,sans-serif" fill="#213f43">
+ <text x="48" y="46" font-size="13" letter-spacing="2">ДЕЛЬНЫЙ МППСС · ВИЗУАЛЬНОЕ ИССЛЕДОВАНИЕ</text>
+ <text x="48" y="96" font-family="Georgia,serif" font-size="39">Подробный мир. Ясная морская обстановка.</text>
+ <text x="48" y="128" font-size="17" fill="#4b605c">Схема принципов — не дизайн-прототип и не учебная задача на расхождение.</text>
+ <rect x="48" y="163" width="1344" height="466" rx="16" fill="#fffaf0" stroke="#c4ccbc"/>
+ <text x="72" y="202" font-size="23" font-weight="bold">01 / Разная плотность деталей, единый информационный язык</text>
+ <g transform="translate(72 224)">
+  <rect width="860" height="380" rx="10" fill="#285d68"/><rect width="860" height="380" rx="10" fill="url(#sea)"/>
+  <path d="M0 0H310L293 42 315 79 291 103 316 142 277 178 291 208 254 248 268 276 224 312 231 345 192 380H0Z" fill="#8ba08b"/>
+  <path d="M310 0L293 42 315 79 291 103 316 142 277 178 291 208 254 248 268 276 224 312 231 345 192 380" fill="none" stroke="#d1c7a5" stroke-width="15"/>
+  <path d="M44 0Q180 70 177 156T70 364" fill="none" stroke="#c4b58e" stroke-width="15"/>
+  <path d="M197 171 355 246 333 260 177 185Z" fill="#aa906e"/>
+  <path d="M208 185l-9 6m29 3-9 6m29 3-9 6m29 4-9 6m29 3-9 6m29 3-9 6m29 3-9 6" stroke="#786f56" stroke-width="2"/>
+  <use href="#house" transform="translate(74 87)"/><use href="#house" transform="translate(189 58) scale(.8)"/>
+  <use href="#house" transform="translate(62 267) scale(.75)"/><use href="#tree" transform="translate(36 186)"/><use href="#tree" transform="translate(111 201) scale(.8)"/>
+  <use href="#tree" transform="translate(233 122) scale(.8)"/>
+  <path d="M155 53l4-30h15l4 30Z" fill="#f2ebdd"/><path d="M158 28h17" stroke="#b36d50" stroke-width="8"/>
+  <path d="M154 20l13-10 13 10Z" fill="#b36d50"/>
+  <path d="M405 340Q444 301 482 263" fill="none" stroke="#fff8e8" stroke-width="3"/>
+  <circle cx="426" cy="320" r="4" fill="#fff8e8"/><circle cx="453" cy="292" r="4" fill="#fff8e8"/>
+  <use href="#boat" transform="translate(491 253) rotate(40)"/>
+  <path d="M508 233Q580 171 667 166" fill="none" stroke="#f5d893" stroke-width="3" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
+  <rect x="548" y="263" width="236" height="58" rx="6" fill="#173d45"/>
+  <path d="M548 284 512 268" stroke="#fff8e8" stroke-width="1.5"/>
+  <text x="562" y="287" font-size="17" font-weight="bold" fill="#fff8e8">«Смена» · своё судно</text>
+  <text x="562" y="308" font-size="14" fill="#fff8e8">Подпись в экранных пикселях</text>
+  <path d="M786 67 735 94 692 119" fill="none" stroke="#fff8e8" stroke-width="3"/>
+  <use href="#boat" transform="translate(676 129) rotate(-120) scale(.8)"/>
+  <rect x="432" y="34" width="252" height="57" rx="6" fill="#173d45"/>
+  <text x="446" y="58" font-size="17" font-weight="bold" fill="#fff8e8">«Марта» · наблюдаемое судно</text>
+  <text x="446" y="80" font-size="14" fill="#fff8e8">Будущее намерение неизвестно</text>
+  <text x="20" y="350" font-size="15" fill="#183e3c">Детали сосредоточены на берегу</text>
+ </g>
+ <g transform="translate(958 246)">
+  <text x="0" y="0" font-size="19" font-weight="bold">Наблюдение и план</text>
+  <path d="M0 37H51" stroke="#285d68" stroke-width="3"/><circle cx="24" cy="37" r="4" fill="#285d68"/>
+  <text x="67" y="43" font-size="16">Прошлые положения</text>
+  <path d="M0 77H51" stroke="#9a6c31" stroke-width="3" stroke-dasharray="8 5"/>
+  <text x="67" y="83" font-size="16">Предварительный план</text>
+  <text x="0" y="132" font-size="19" font-weight="bold">Внимание по приоритету</text>
+  <text x="0" y="169" font-size="17">1. Участники ситуации</text>
+  <text x="0" y="202" font-size="17">2. Движение и действие</text>
+  <text x="0" y="235" font-size="17">3. Связанные с историей места</text>
+  <text x="0" y="268" font-size="17" fill="#4b605c">4. Декоративные предметы</text>
+  <text x="0" y="318" font-size="15" fill="#4b605c">Указатели не раскрывают</text>
+  <text x="0" y="340" font-size="15" fill="#4b605c">правильный ответ до выбора.</text>
+ </g>
+ <rect x="48" y="652" width="648" height="322" rx="16" fill="#fffaf0" stroke="#c4ccbc"/>
+ <text x="72" y="692" font-size="23" font-weight="bold">02 / Контраст важнее фактуры</text>
+ <rect x="72" y="714" width="600" height="86" rx="8" fill="#eee9d5"/>
+ <text x="92" y="741" font-size="13" fill="#758168">Вводный текст нынешнего прототипа: 13 px</text>
+ <text x="92" y="778" font-size="19" fill="#213f43">Контраст 3,39:1 · ниже ориентира 4,5:1</text>
+ <rect x="72" y="814" width="600" height="86" rx="8" fill="#f2ebdd"/>
+ <text x="92" y="844" font-size="17" fill="#213f43">Предлагаемая пара: бумага + тёмные чернила</text>
+ <text x="92" y="880" font-size="19" fill="#213f43">Контраст 9,53:1 · размеры проверяем в игре</text>
+ <text x="72" y="942" font-size="15" fill="#4b605c">Оценка по цветам sRGB; полноценный аудит ещё нужен.</text>
+ <rect x="720" y="652" width="672" height="322" rx="16" fill="#fffaf0" stroke="#c4ccbc"/>
+ <text x="744" y="692" font-size="23" font-weight="bold">03 / Экранный угол ≠ истинный</text>
+ <g transform="translate(770 829)">
+  <path d="M0 0H149M0 0 106-106" fill="none" stroke="#213f43" stroke-width="3" marker-end="url(#inkArrow)"/>
+  <path d="M43 0A43 43 0 0 0 30-30" fill="none" stroke="#a36c43" stroke-width="2"/>
+  <text x="51" y="-21" font-size="20">45°</text>
+  <text x="0" y="44" font-size="16">На плоскости</text>
+ </g>
+ <g transform="translate(1070 829)">
+  <path d="M0 0H149M0 0 106-62.45" fill="none" stroke="#213f43" stroke-width="3" marker-end="url(#inkArrow)"/>
+  <path d="M43 0A43 43 0 0 0 37-22" fill="none" stroke="#a36c43" stroke-width="2"/>
+  <text x="51" y="-13" font-size="20">≈30,5°</text>
+  <text x="0" y="44" font-size="16">В текущей проекции</text>
+ </g>
+ <text x="744" y="922" font-size="16" fill="#4b605c">Для точной задачи — данные модели и подходящий ракурс</text>
+ <text x="744" y="946" font-size="16" fill="#4b605c">той же сцены. Постоянная вторая схема не обязательна.</text>
+ <text x="48" y="1015" font-size="14" fill="#4b605c">Основа: аудит текущего прототипа, W3C WCAG 2.2, исследование референсов. Полные источники и ограничения — в документе.</text>
+</g>
+</svg>

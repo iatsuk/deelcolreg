@@ -1,0 +1,6 @@
+#!/bin/sh
+# Finds a Node 24 even when none is on PATH, then runs the Quest Lab.
+here="$(cd "$(dirname "$0")" && pwd)"
+if command -v node >/dev/null 2>&1; then runner=node
+else runner="$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"; fi
+exec "$runner" "$here/cli.js" "$@"

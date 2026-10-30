@@ -1,0 +1,14 @@
+{
+  "minWords": 1500,
+  "minLocations": 25,
+  "minParams": 4,
+  "minEndings": 4,
+  "minOptimal": 0.8,
+  "maxRandom": 0.2,
+  "maxLongest": 0.3,
+  "maxShortest": 0.3,
+  "minMeaningful": 0.25,
+  "maxFalseChoice": 0.25,
+  "minRuleCost": 0.1,
+  "minTrapCost": 0.1
+}

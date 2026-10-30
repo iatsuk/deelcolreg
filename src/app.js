@@ -60,7 +60,7 @@ function shell(content) {
       <a class="byline" href="https://deelstuff.com/">проект <strong>deelstuff<span>↗</span></strong></a>
     </header>
     <main id="main">${content}</main>
-    <footer><span>${icon('sail')} Дельный МППСС <span class="footer-dot">·</span> Сделано, чтобы помнить.</span><div class="footer-links"><button data-page="sources">Об игре и источники</button><button data-page="impressum">Impressum</button><button data-page="datenschutz">Datenschutz</button></div><span class="version">COLREG · V0.3</span></footer>
+    <footer><span>${icon('sail')} Дельный МППСС <span class="footer-dot">·</span> Сделано, чтобы помнить.</span><div class="footer-links"><button data-page="sources">Об игре и источники</button><button data-page="impressum">Impressum</button><button data-page="datenschutz">Datenschutz</button></div><span class="version">COLREG · V0.4</span></footer>
     <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>`;
   document.querySelector('#modal').addEventListener('close', () => { if(modalArcadeResume){modalArcadeResume=false;arcade.state.paused=false;render();return;} if(modalCourseResume && courseGame.state?.phase==='question'){modalCourseResume=false;courseGame.state.paused=false;render();return;} if (modalResume && session?.phase === 'question') { modalResume = false; resume(); } });
 }
@@ -68,7 +68,7 @@ function shell(content) {
 function render() {
   cancelAnimationFrame(frame);
   courseGame.stopClock();stopSignal();arcade.detach();
-  if(page==='course'){shell(arcadeHub(arcade.progress));return;}
+  if(page==='course'){shell(`<section class="voyage-invitation"><div><p class="eyebrow">ИГРОВАЯ ВАХТА · ПРАКТИКА МППСС</p><h1>Кто уступает дорогу?<br>Решите по МППСС.</h1><p>Двенадцать коротких визуальных встреч: определите обязанность, выберите действие и разберите причину. Ошибочные темы вернутся в других условиях.</p><a class="primary-button" href="./voyage.html">Начать вахту →</a><small>Играбельный прототип · 12 решений · объяснение каждого ответа</small></div><div class="voyage-invitation-art" aria-hidden="true"><span>⚑</span><i></i><b>НАБЛЮДЕНИЕ → РЕШЕНИЕ</b><img src="./assets/captain-elena.png" alt="" width="220" height="240"></div></section>`+arcadeHub(arcade.progress));return;}
   if(GAME_TYPES[page]){if(arcade.state?.type!==page){arcade.start(page);return;}shell(arcadeMarkup(arcade));if(!arcade.saved)document.querySelector('#main').insertAdjacentHTML('beforeend','<p class="arcade-storage-note" role="status">Сохранить прогресс не удалось. Игра продолжает работать в этой вкладке.</p>');arcade.mount();return;}
   if(page==='cards'){shell(courseMarkup(courseGame.progress,courseMode,icon));return;}
   if(['sources','impressum','datenschutz'].includes(page)){shell(informationMarkup(page,SOURCES));return;}
@@ -303,7 +303,7 @@ root.addEventListener('click', event => {
     }
     case 'close-modal': document.querySelector('#modal').close(); break;
     case 'reset': showModal('<p class="eyebrow">СУДОВОЙ ЖУРНАЛ</p><h2 id="modal-title">Начать с чистого листа?</h2><p>Локальная история ответов во всех тренировках, очки и закреплённые ситуации будут удалены из этого браузера.</p><div class="modal-actions"><button class="secondary-button" data-action="close-modal">Сохранить прогресс</button><button class="danger-button" data-action="confirm-reset">Сбросить</button></div>'); break;
-    case 'confirm-reset': progress = emptyProgress(); persist(); session = null; courseGame.reset();courseGame.state=null; arcade.reset();render(); break;
+    case 'confirm-reset': progress = emptyProgress(); persist(); session = null; courseGame.reset();courseGame.state=null; arcade.reset();try{storage.removeItem('deelstuff.colreg.voyage.v1');storage.removeItem('deelstuff.colreg.watch.v1');}catch{}render(); break;
   }
 });
 

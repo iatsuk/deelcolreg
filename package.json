@@ -1,12 +1,13 @@
 {
   "name": "deelcolreg",
-  "version": "0.3.0",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
-  "description": "Дельный МППСС — тренажёр распознавания ситуаций COLREG для deelstuff",
+  "description": "Дельный МППСС — игровая практика COLREG от deelstuff",
   "scripts": {
     "dev": "python3 -m http.server 4183 --bind 127.0.0.1",
     "test": "node --test tests/*.test.js",
-    "build": "node scripts/build.js"
+    "build": "node scripts/build.js",
+    "ql": "node tools/questlab/cli.js"
   }
 }

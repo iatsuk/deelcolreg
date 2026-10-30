@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#12546b"><meta name="description" content="Двенадцать коротких решений по МППСС: визуальные встречи, объяснения ошибок и повторение в новых условиях."><title>Игровая вахта · Дельный МППСС</title><link rel="icon" href="./favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./src/voyage.css"><script type="module" src="./src/voyage.js"></script></head>
+<body>
+<a class="skip" href="#choices">К решению ситуации</a>
+<header class="watch-header"><a class="brand" href="./index.html#course"><span aria-hidden="true">✳</span> Дельный <b>МППСС</b></a><span class="watch-title">Игровая вахта <small>ВЗАИМНЫЕ ОБЯЗАННОСТИ</small></span><nav aria-label="Игра"><button data-w="rules">Правила</button><button data-w="help">Как играть</button><button data-w="pause" id="pause-button" aria-label="Пауза">Ⅱ</button></nav></header>
+<div class="watch-progress"><span id="round-count">Решение 1 из 12</span><div id="progress-dots" aria-label="Результаты решений"></div><span id="correct-count">0 верно</span></div>
+<main class="watch-layout">
+ <section class="sea-scene" aria-label="Визуальная ситуация"><canvas id="sea" tabindex="0" aria-label="Схема встречи судов. А — наше судно, Б — другое. Для выбора можно нажать на судно или использовать кнопки рядом."></canvas><div class="conditions"><span>ОТКРЫТАЯ ВОДА</span><small>Хорошая видимость · суда на виду</small></div><div class="north" aria-label="Север сверху">N <i></i></div><div class="scene-caption" id="scene-caption">Отметьте судно прямо на схеме</div><div class="pause-overlay" id="pause-overlay" hidden><h2>Пауза</h2><button class="primary" data-w="pause">Продолжить →</button></div></section>
+ <section class="decision-panel" aria-labelledby="question-title"><div id="question-panel"></div><div id="results-panel" hidden></div><div class="panel-foot"><label><input type="checkbox" id="auto" checked> Автопереход после верного ответа</label><button data-w="help">Управление и условия</button></div></section>
+</main>
+<footer><span id="learning-status">12 коротких решений · ошибочные темы вернутся с вариацией</span><a href="./index.html#sources">deelstuff · прототип 0.4</a></footer>
+<dialog id="reader" aria-labelledby="reader-title"><button class="reader-close" data-w="close" aria-label="Закрыть">×</button><div id="reader-content"></div></dialog>
+<noscript>Для игры нужен JavaScript.</noscript>
+</body></html>
