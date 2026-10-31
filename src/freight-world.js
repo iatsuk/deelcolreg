@@ -16,6 +16,7 @@ export const EDGES=[
 export const edgeBetween=(a,b)=>EDGES.find(e=>(e.a===a&&e.b===b)||(e.a===b&&e.b===a));
 export const neighbours=port=>EDGES.filter(e=>e.a===port||e.b===port).map(edge=>({to:edge.a===port?edge.b:edge.a,edge}));
 export const newWorld=()=>({port:'old',money:120,offers:{},trips:0,vars:{},news:{},recent:[]});
+export const newStore=()=>({endings:{},debts:{},active:null,world:newWorld()});
 
 // Fittings stay on the boat between voyages. Each is sold in one port, so where you sail starts to matter.
 export const UPGRADES={

@@ -10,7 +10,7 @@ import {fromLegacy} from '../tools/questlab/legacy.js';
 import {visibleLights} from '../src/freight-sea.js';
 import {practiceRound,practiceCheck} from '../src/freight-practice.js';
 import {buildErrand,splice} from '../src/quest-assemble.js';
-import {PORTS,EDGES,UPGRADES,DEATH_NEWS,LOST_SHIP,edgeBetween,neighbours,newWorld,dealOffers,pickEncounters,settle,forSale,buy,enterWorld,leaveWorld,hearNews,payDebts} from '../src/freight-world.js';
+import {PORTS,EDGES,UPGRADES,DEATH_NEWS,LOST_SHIP,edgeBetween,neighbours,newWorld,newStore,dealOffers,pickEncounters,settle,forSale,buy,enterWorld,leaveWorld,hearNews,payDebts} from '../src/freight-world.js';
 import {renderChart} from '../src/freight-chart.js';
 
 const build=src=>{const raw=compile(src),q=loadQuest(raw);q.raw=raw;return q;};
@@ -376,4 +376,12 @@ test('commas inside calls stay in the expression',()=>{
  const q=build(`quest c\nparam a "a" -1..1 =0 hidden\nparam b "b" 0..1 =0 hidden\n== s\n* x\n  ~ a=min(1,a+1), b=1\n  -> e\n== e win\nКонец.\n`);
  const s=take(q,begin(q),choices(q,begin(q))[0].id);
  assert.equal(s.v[q.index.a],1);assert.equal(s.v[q.index.b],1);
+});
+test('starting over leaves nothing of the old voyage and shares nothing between saves',()=>{
+ const a=newStore(),b=newStore();
+ a.world.vars.radar=1;a.world.news.old=['x'];a.debts[24]=['трос'];a.endings['plombir:win']=1;
+ assert.deepEqual(b,{endings:{},debts:{},active:null,world:newWorld()});
+ const used={...newStore(),debts:{24:['трос']},active:{id:'plombir'}};used.world.money=900;
+ Object.assign(used,newStore());
+ assert.equal(used.active,null);assert.deepEqual(used.debts,{});assert.equal(used.world.money,120);
 });

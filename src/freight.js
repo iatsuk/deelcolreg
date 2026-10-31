@@ -4,7 +4,7 @@ import {Sea} from './freight-sea.js';
 import {Ambience} from './freight-audio.js';
 import {practiceRound,practiceCheck} from './freight-practice.js';
 import {buildErrand} from './quest-assemble.js';
-import {PORTS,UPGRADES,DEATH_NEWS,edgeBetween,neighbours,newWorld,dealOffers,settle,forSale,buy,owned,enterWorld,leaveWorld,hearNews,payDebts} from './freight-world.js';
+import {PORTS,UPGRADES,DEATH_NEWS,edgeBetween,neighbours,newWorld,newStore,dealOffers,settle,forSale,buy,owned,enterWorld,leaveWorld,hearNews,payDebts} from './freight-world.js';
 import {renderChart,sailChart} from './freight-chart.js';
 
 const KEY='deelstuff.colreg.freight.v2',OLDKEY='deelstuff.colreg.freight.v1',BOOK_MINUTES=5,PENALTY=10;
@@ -14,7 +14,7 @@ const read=key=>{try{return JSON.parse(localStorage.getItem(key));}catch{return 
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(store));}catch{}};
 // Earlier saves keep endings and debts; a voyage in progress cannot survive the new location ids.
 const earlier=read(OLDKEY)||{};
-const store={endings:earlier.endings||{},debts:earlier.debts||{},active:null,...read(KEY)};
+const store={...newStore(),endings:earlier.endings||{},debts:earlier.debts||{},...read(KEY)};
 store.world={...newWorld(),...store.world};
 const ENDLABEL={win:'Удалось',soft:'Удалось наполовину',fail:'Провал',death:'Гибель'};
 const LAMPS=['','Белый','Красный','Зелёный'],LAMPCLASS=['off','white','red','green'];
@@ -62,7 +62,7 @@ function board(){
  const work=live?`<section><h2>Рейс не закончен</h2>${card('Продолжить',live.title,'Судно ждёт вас там, где вы его оставили.','',`data-do="resume"`)}<button class="ghost wide" data-do="abandon">Бросить рейс</button></section>`:`<section><h2>Заказы</h2>${quests.filter(x=>x.raw.route?.[0]===w.port).map(contract).join('')}${w.offers[w.port].map(errand).join('')}</section><section><h2>Куда идти</h2><div class="courses">${neighbours(w.port).map(n=>`<button class="course" data-do="course" data-to="${n.to}"><strong>${esc(PORTS[n.to].name)}</strong><span>${esc(n.edge.name)} · встреч ${n.edge.legs}</span></button>`).join('')}</div></section>${shop(w)}`;
  const news=w.news[w.port]||[];
  const fitted=Object.keys(UPGRADES).filter(id=>owned(w,id));
- root.querySelector('#panel').innerHTML=`<header class="brand"><span class="eyebrow">Ночной фрахт · прототип</span><h1>${esc(port.name)}</h1><p>${esc(port.blurb)}</p></header><p class="purse"><span>Касса</span><strong>${w.money}</strong></p>${news.length?`<section class="news"><h2>Что говорят</h2>${news.map(t=>`<p>${esc(t)}</p>`).join('')}</section>`:''}${work}${fitted.length?`<section class="fitted"><h2>На судне</h2><p>${fitted.map(id=>esc(UPGRADES[id].name)).join(' · ')}</p></section>`:''}${debts.length?`<section class="debts"><h2>Хвосты перед инспектором</h2><p>На этих правилах вы уже попались. В море они будут встречаться чаще.</p><ul>${debts.slice(0,5).map(([rule,list])=>`<li><button class="rule-link" data-do="rule" data-rule="${esc(rule)}">Правило ${esc(rule)}</button><span>${esc(list[0])}</span></li>`).join('')}</ul></section>`:''}`;
+ root.querySelector('#panel').innerHTML=`<header class="brand"><span class="eyebrow">Ночной фрахт · прототип</span><h1>${esc(port.name)}</h1><p>${esc(port.blurb)}</p></header><p class="purse"><span>Касса</span><strong>${w.money}</strong></p>${news.length?`<section class="news"><h2>Что говорят</h2>${news.map(t=>`<p>${esc(t)}</p>`).join('')}</section>`:''}${work}${fitted.length?`<section class="fitted"><h2>На судне</h2><p>${fitted.map(id=>esc(UPGRADES[id].name)).join(' · ')}</p></section>`:''}${debts.length?`<section class="debts"><h2>Хвосты перед инспектором</h2><p>На этих правилах вы уже попались. В море они будут встречаться чаще.</p><ul>${debts.slice(0,5).map(([rule,list])=>`<li><button class="rule-link" data-do="rule" data-rule="${esc(rule)}">Правило ${esc(rule)}</button><span>${esc(list[0])}</span></li>`).join('')}</ul></section>`:''}<button class="reset" data-do="reset-ask">Начать заново</button>`;
  tools();
 }
 
@@ -71,6 +71,13 @@ function shop(w){
  if(!items.length)return '';
  const row=u=>`<button class="course" data-do="buy" data-id="${u.id}" ${w.money<u.price?'disabled':''}><strong>${esc(u.name)} · ${u.price}</strong><span>${esc(w.money<u.price?`Не хватает ${u.price-w.money}. `:'')}${esc(u.about)}</span></button>`;
  return `<section><h2>Для судна</h2><div class="courses">${items.map(row).join('')}</div></section>`;
+}
+function askReset(){
+ showDrawer('<h2>Начать заново?</h2><p class="warning">Будут стёрты касса, покупки для судна, память мира, новости портов, хвосты, найденные финалы и незаконченный рейс. Отменить это нельзя.</p><div class="after"><button class="primary danger" data-do="reset-do">Стереть всё</button><button class="ghost" data-do="close">Оставить как есть</button></div>');
+}
+function resetAll(){
+ try{localStorage.removeItem(OLDKEY);}catch{}
+ Object.assign(store,newStore());save();closeDrawer();board();
 }
 function questFor(o){const raw=buildErrand(bundle,o),x=loadQuest(raw);x.raw=raw;return x;}
 function launch(x,o,saved){
@@ -235,6 +242,8 @@ function onClick(e){
  else if(action==='resume')resume();
  else if(action==='abandon'){store.active=null;save();board();}
  else if(action==='course')setCourse(to);
+ else if(action==='reset-ask'){if(!sailing)askReset();}
+ else if(action==='reset-do')resetAll();
  else if(action==='buy'){if(buy(store.world,id)){save();board();}}
  else if(action==='choice')choose(id);
  else if(action==='slot')slotNext(+i,mode);
