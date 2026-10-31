@@ -1,5 +1,6 @@
 encounter aground
 title Судно на мели
+radar крупная цель стоит на месте у края мелководья.
 rules 30
 
 == aground

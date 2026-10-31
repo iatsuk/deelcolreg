@@ -10,7 +10,7 @@ import {fromLegacy} from '../tools/questlab/legacy.js';
 import {visibleLights} from '../src/freight-sea.js';
 import {practiceRound,practiceCheck} from '../src/freight-practice.js';
 import {buildErrand,splice} from '../src/quest-assemble.js';
-import {PORTS,EDGES,edgeBetween,neighbours,newWorld,dealOffers,pickEncounters,settle} from '../src/freight-world.js';
+import {PORTS,EDGES,UPGRADES,DEATH_NEWS,LOST_SHIP,edgeBetween,neighbours,newWorld,dealOffers,pickEncounters,settle,forSale,buy,enterWorld,leaveWorld,hearNews,payDebts} from '../src/freight-world.js';
 import {renderChart} from '../src/freight-chart.js';
 
 const build=src=>{const raw=compile(src),q=loadQuest(raw);q.raw=raw;return q;};
@@ -279,12 +279,101 @@ test('the world moves with the boat and a wreck goes home',()=>{
  const w=newWorld();w.offers.fish=[{}];
  settle(w,{to:'fish'},'win',300);
  assert.equal(w.port,'fish');assert.equal(w.money,300);assert.equal(w.trips,1);assert.equal(w.offers.fish,undefined);
- settle(w,{to:'far'},'death',-40);
- assert.equal(w.port,'old');assert.equal(w.money,0);
+ settle(w,{to:'far'},'death',150);
+ assert.equal(w.port,'old');assert.equal(w.money,150-LOST_SHIP);
+ settle(w,{to:'far'},'death',10);
+ assert.equal(w.money,0);
+ assert.ok(DEATH_NEWS.includes(String(LOST_SHIP)));
  assert.deepEqual(neighbours('light').map(n=>n.to).sort(),['far','fish']);
 });
 test('the chart draws every port and marks only reachable ones',()=>{
  const svg=renderChart('old');
  for(const p of Object.values(PORTS))assert.ok(svg.includes(p.name),p.name);
  assert.ok(svg.includes('data-to="fish"'));assert.ok(svg.includes('data-to="far"'));assert.ok(!svg.includes('data-to="light"'));
+});
+
+const world=(vars={},money=120)=>({...newWorld(),vars,money});
+const playErrand=(q,w,rand=()=>.5)=>{enterWorld(q,w);return begin(q,rand);};
+
+test('fittings are sold in one port, cost money and cannot be bought twice',()=>{
+ const w=world();
+ assert.deepEqual(forSale(w,'light').map(u=>u.id),['radar']);
+ assert.equal(buy(w,'radar'),false,'радар продают на маяке');
+ w.port='light';
+ assert.equal(buy(w,'radar'),false,'денег мало');
+ w.money=400;
+ assert.equal(buy(w,'radar'),true);assert.equal(w.money,100);assert.equal(w.vars.radar,1);
+ assert.equal(buy(w,'radar'),false);assert.deepEqual(forSale(w,'light'),[]);
+ for(const [id,u] of Object.entries(UPGRADES)){assert.ok(PORTS[u.port],id);assert.ok(plombir().params.some(p=>p.id===id&&p.world),`${id} не параметр мира`);}
+});
+test('the purse and the world enter a quest and what the voyage changed comes back',()=>{
+ const q=plombir(),w=world({gasket:1,lg:1},300);
+ let s=playErrand(q,w);
+ assert.equal(s.v[q.index.money],300);assert.equal(s.v[q.index.gasket],1);
+ s=go(q,s,/Осмотреться/);s=go(q,s,/Лавка/);
+ const shop=choices(q,s).map(c=>c.text).join();
+ assert.ok(!/Прокладка/.test(shop)&&!/Зелёный/.test(shop),'купленное второй раз не продаётся');
+ s=go(q,s,/Таблица/);
+ const after=world();leaveWorld(q,s,after);
+ assert.equal(after.vars.table,1);assert.equal(after.vars.gasket,1);assert.equal(after.vars.zaz,0);
+});
+test('fittings change the numbers of a voyage',()=>{
+ const o={errand:'piano',from:'old',to:'fish',picks:['yacht','cross'],toName:PORTS.fish.to};
+ const leg=vars=>{const q=errandQuest(o);let s=go(q,playErrand(q,world(vars)),/Взять/);s=go(q,s,/Средним/);return {t:s.v[q.index.t],pl:s.v[q.index.pl]};};
+ const base=leg({}),fitted=leg({gasket:1,screw:1});
+ assert.equal(base.pl-fitted.pl,-5);assert.equal(base.t-fitted.t,10);
+});
+test('radar tells what the next leg holds, and only with radar',()=>{
+ const o={errand:'piano',from:'old',to:'fish',picks:['yacht','cross'],toName:PORTS.fish.to};
+ const helm=vars=>{const q=errandQuest(o);return screen(q,go(q,playErrand(q,world(vars)),/Взять/)).paragraphs.join(' ');};
+ assert.ok(!helm({}).includes('На радаре'));
+ assert.ok(helm({radar:1}).includes(bundle.deck.yacht.radar));
+ for(const [name,f] of Object.entries(bundle.deck))assert.ok(f.radar,name);
+ const raw=compile(source);
+ assert.ok(!JSON.stringify(raw).includes('{{radar'));
+});
+test('the inspector remembers: a debt forgives once, a grudge starts you under watch',()=>{
+ const o={errand:'piano',from:'old',to:'fish',picks:['yacht','cross'],toName:PORTS.fish.to};
+ const q=errandQuest(o),s0=go(q,playErrand(q,world({zaz:-1})),/Взять/);
+ assert.equal(s0.v[q.index.sus],20);
+ const owed=errandQuest(o);let s=go(owed,playErrand(owed,world({zaz:1})),/Взять/);
+ s={...s,v:s.v.slice()};s.v[owed.index.sus]=90;s=mastWrite(owed,'lights',s,{slots:[],top:0,nav:0});
+ s=go(owed,s,/Средним/);
+ assert.equal(s.loc,'pardon');assert.equal(s.v[owed.index.zaz],0);assert.equal(s.v[owed.index.sus],70);
+ const none=errandQuest(o);let n=go(none,playErrand(none,world({})),/Взять/);
+ n={...n,v:n.v.slice()};n.v[none.index.sus]=90;n=mastWrite(none,'lights',n,{slots:[],top:0,nav:0});
+ n=go(none,n,/Средним/);
+ assert.equal(n.loc,'caught');assert.equal(n.v[none.index.zaz],-1);
+});
+test('a pleased Marfa keeps a slip out of the log',()=>{
+ const pass=vars=>{const q=plombir();let s=go(q,playErrand(q,world(vars)),/Осмотреться/);s=go(q,s,/швартовы/);s=mastWrite(q,'lights',s,{slots:[],top:0,nav:0});s=go(q,s,/Пройти мимо/);return {q,s,view:screen(q,s).paragraphs.join(' ')};};
+ const strict=pass({}),kind=pass({marfa:1});
+ assert.match(strict.view,/В журнал пишу/);assert.match(kind.view,/В журнал не пишу/);
+ const on=x=>go(x.q,x.s,/Выйти в море/).v[x.q.index.sus];
+ assert.equal(on(strict),15);assert.equal(on(kind),0);
+});
+test('ports remember what happened, newest first, three at most',()=>{
+ const w=newWorld();
+ for(const t of ['a','b','c','d'])hearNews(w,'old',t);
+ hearNews(w,'old',undefined);
+ assert.deepEqual(w.news.old,['d','c','b']);
+ for(const e of Object.values(bundle.errands))for(const k of ['win','soft','fail','late'])assert.ok(e.news?.[k],`${e.id}: нет новости ${k}`);
+ assert.ok(compile(source).news.confess);
+});
+test('an encounter passed cleanly pays its debt, a repeated mistake does not',()=>{
+ const debts={24:['трос'],18:['танкер','ещё'],26:['сеть']};
+ payDebts(debts,[24,18],[{rule:'18',text:'снова'}]);
+ assert.equal(debts[24],undefined);assert.equal(debts[18].length,2);assert.equal(debts[26].length,1);
+});
+test('a finished errand rests before it is offered again',()=>{
+ const rand=seeded(5),recent=['piano'];
+ for(let i=0;i<40;i++){const offers=dealOffers('old',bundle,{},rand,1,recent);assert.ok(!offers.some(o=>o.errand==='piano'),'рояль только что возили');}
+ const w=newWorld();settle(w,{to:'fish',errand:'piano'},'win',200);settle(w,{to:'far',errand:'crayfish'},'win',200);
+ assert.deepEqual(w.recent,['crayfish','piano']);
+ assert.ok(dealOffers('old',bundle,{},rand,2,['piano','ruler']).length>0,'лучше повтор, чем пустая доска');
+});
+test('commas inside calls stay in the expression',()=>{
+ const q=build(`quest c\nparam a "a" -1..1 =0 hidden\nparam b "b" 0..1 =0 hidden\n== s\n* x\n  ~ a=min(1,a+1), b=1\n  -> e\n== e win\nКонец.\n`);
+ const s=take(q,begin(q),choices(q,begin(q))[0].id);
+ assert.equal(s.v[q.index.a],1);assert.equal(s.v[q.index.b],1);
 });

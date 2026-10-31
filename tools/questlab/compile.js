@@ -6,7 +6,8 @@ const fail=(n,msg)=>{throw new Error(`строка ${n}: ${msg}`);};
 
 function parseEffects(src,fxs,n){
  const out=[];
- for(const raw of src.split(',').map(x=>x.trim()).filter(Boolean)){
+ // Commas inside calls such as min(1,zaz+1) belong to the expression, not to the list of effects.
+ for(const raw of src.split(/,(?![^()]*\))/).map(x=>x.trim()).filter(Boolean)){
   if(fxs[raw]){out.push(...fxs[raw]);continue;}
   const m=raw.match(/^([A-Za-z_]\w*)\s*(\+=|-=|=)\s*(.+)$/);
   if(!m)fail(n,`не разобрать эффект «${raw}»`);
@@ -53,6 +54,8 @@ export function compileQuest(source,{load}={}){
    else if((m=t.match(/^route\s+(\w+)\s+(\w+)$/)))q.route=[m[1],m[2]];
    else if((m=t.match(/^routes\s+(.+)$/)))q.routes=m[1].split(/\s+/).map(x=>x.split('-'));
    else if((m=t.match(/^pay\s+(\d+)$/)))q.pay=+m[1];
+   else if((m=t.match(/^radar\s+(.+)$/)))q.radar=m[1];
+   else if((m=t.match(/^news\s+([\w-]+)\s+(.+)$/)))(q.news||={})[m[1]]=m[2];
    else if((m=t.match(/^perleg\s+(\d+)$/)))q.perleg=+m[1];
    else if((m=t.match(/^set\s+(.+)$/)))q.set=keyValues(m[1]);
    else if((m=t.match(/^cargo\s+"([^"]*)"$/))){q.cargo={label:m[1],ranges:[]};param=q.cargo;}
@@ -70,6 +73,7 @@ export function compileQuest(source,{load}={}){
     const flags=m[6]||'';
     param={id:m[1],label:m[2],min:+m[3],max:+m[4],start:+m[5],ranges:[]};
     if(/\bhidden\b/.test(flags))param.hidden=true;
+    if(/\bworld\b/.test(flags))param.world=true;
     Object.assign(param,keyValues(flags));
     const at=q.params.findIndex(p=>p.id===param.id);
     if(at>=0)q.params[at]=param;else q.params.push(param);
@@ -139,7 +143,10 @@ export function compileQuest(source,{load}={}){
   q.locations[id]={text:[],choices:[],auto:[{when:null,to:fan,fx:[]}],on:[],notes:[]};
  }
  q.start||=Object.keys(q.locations)[0];
- for(const u of uses)splice(q,compileQuest(load(u.name),{load}),u.as,u.exit);
+ const parts=uses.map(u=>({...u,fragment:compileQuest(load(u.name),{load})}));
+ for(const u of parts)splice(q,u.fragment,u.as,u.exit);
+ const radar=text=>text.replace(/\{\{radar:([\w-]+)\}\}/g,(_,name)=>parts.find(u=>u.name===name).fragment.radar);
+ for(const l of Object.values(q.locations))for(const p of l.text||[])p.text=radar(p.text);
  for(const [id,l] of Object.entries(q.locations))for(const c of l.choices)if(!c.to)fail(c.line,`у выбора «${c.text}» в ${id} нет перехода ->`);
  return q;
 }

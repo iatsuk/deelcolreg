@@ -17,8 +17,14 @@ param top "топовый" 0..1 =0 hidden
 param nav "бортовые и кормовой" 0..1 =0 hidden
 param lw "белых" 0..4 =1 hidden
 param lr "красных" 0..4 =1 hidden
-param lg "зелёных" 0..4 =0 hidden
+param lg "зелёных" 0..4 =0 hidden world
 param ice "пломбир на борту" 0..1 =0 hidden
+param table "таблица" 0..1 =0 hidden world
+param gasket "прокладка" 0..1 =0 hidden world
+param screw "новый винт" 0..1 =0 hidden world
+param radar "радар" 0..1 =0 hidden world
+param zaz "инспектор помнит" -1..1 =0 hidden world
+param marfa "Марфа довольна" 0..1 =0 hidden world
 
 def stackless = m1==0
 def plain = stackless and top==1 and nav==1
@@ -29,3 +35,15 @@ def trawl = m1==3 and m2==1 and m3==0 and nav==1
 def pilot = m1==1 and m2==2 and m3==0 and top==0 and nav==1
 def anch = m1==1 and m2==0 and top==0 and nav==0
 def fishy = fish or trawl or fishtop
+
+doc table "Таблица Кузьмича" when=table
++ Красный над белым — рыбак за делом.
++ Зелёный над белым — трал идёт смело.
++ Белый над красным — лоцман прекрасный.
++ Красный над красным — рулить напрасно.
++ Красный, белый, красный — занят, не до праздных.
++ Три белых в ряд — за ним канат.
++ Три красных в ряд — осадка, брат.
++ Один белый вокруг — стоит на якоре, друг.
++ Днём: шар — якорь. Два шара — без руля. Три шара — на мели.
++ Днём: конусы вершинами вместе — рыбак. Мелкому рыбаку хватит корзины.

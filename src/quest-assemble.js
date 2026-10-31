@@ -20,6 +20,7 @@ export function buildErrand(bundle,offer){
  const q=copy(bundle.template),param=id=>q.params.find(p=>p.id===id),depart=param('t').start;
  q.id=e.id;q.title=e.title;q.brief=e.brief;q.start=e.start;q.rules=[...new Set([...e.rules,...offer.picks.flatMap(p=>bundle.deck[p].rules)])];
  if(e.legal)q.legal=e.legal;
+ q.news=e.news||{};
  Object.assign(param('pl'),{label:e.cargo.label,ranges:e.cargo.ranges});
  for(const [k,v] of Object.entries(e.set||{}))param(k).start=v;
  param('legs').start=offer.picks.length;
@@ -31,6 +32,7 @@ export function buildErrand(bundle,offer){
   const n=i+1;
   splice(q,bundle.deck[pick],`s${n}`,`after${n}`);
   q.locations[`slot${n}`].auto=[{when:null,to:[{id:`s${n}`}],fx:[]}];
+  q.locations.helm.text.splice(n,0,{when:`radar==1 and pos==${n}`,text:`На радаре впереди: ${bundle.deck[pick].radar}`});
  });
  return q;
 }

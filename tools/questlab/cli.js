@@ -6,7 +6,7 @@ import {loadQuest,begin,take,screen,choices,mastConfigs,mastWrite,mastRead,fill}
 import {RULE_TEXT} from '../../src/rules-text.js';
 import {compile,makeBundle} from './files.js';
 import {buildErrand} from '../../src/quest-assemble.js';
-import {EDGES,edgeBetween,PORTS} from '../../src/freight-world.js';
+import {EDGES,edgeBetween,PORTS,UPGRADES,enterWorld} from '../../src/freight-world.js';
 import {analyse} from './solve.js';
 import {lint} from './lint.js';
 import {fromLegacy} from './legacy.js';
@@ -114,15 +114,21 @@ function graph(q){
 
 const permutations=(list,n)=>n?list.flatMap(x=>permutations(list.filter(y=>y!==x),n-1).map(rest=>[x,...rest])):[[]];
 
+// The world a voyage can start in. Upgrades must not solve the game, a grudge must not end it.
+const ALL_FITTED=Object.fromEntries(Object.keys(UPGRADES).map(id=>[id,1]));
+const WORLDS=[['новое судно',{}],['инспектор помнит зло',{zaz:-1}],['инспектор должен',{zaz:1}],['всё куплено',ALL_FITTED],['всё куплено, зло',{...ALL_FITTED,zaz:-1}]];
+const inWorld=(q,vars)=>{enterWorld(q,{vars,money:120});return q;};
+
 // Every errand on every route with every deal: the assembled quests are small enough to solve exactly.
 function deck(){
- const bundle=makeBundle();
+ const bundle=makeBundle(),offers=[];
  console.log(`${'поручение'.padEnd(16)}${'маршрут'.padEnd(13)}${'сборок'.padStart(7)}${'лучшая мин'.padStart(11)}${'наугад макс'.padStart(12)}${'длинн макс'.padStart(11)}${'значим мин'.padStart(11)}`);
  let bad=0;
  for(const e of Object.values(bundle.errands))for(const [from,to] of e.routes){
   const edge=edgeBetween(from,to),rows=[];
   for(const picks of permutations(edge.deck,edge.legs)){
-   const raw=buildErrand(bundle,{errand:e.id,from,to,picks,toName:PORTS[to].to,fromName:PORTS[from].name}),q=loadQuest(raw);q.raw=raw;
+   const offer={errand:e.id,from,to,picks,toName:PORTS[to].to,fromName:PORTS[from].name},raw=buildErrand(bundle,offer),q=loadQuest(raw);q.raw=raw;
+   offers.push(offer);
    const a=analyse(q);rows.push({picks,a});
    const missing=['win','soft'].filter(x=>a.unreachable.includes(x));
    if(missing.length||a.deadEnds.length){console.log(`  ${e.id} ${picks}: не достигается ${missing} тупики ${a.deadEnds}`);bad++;}
@@ -131,6 +137,14 @@ function deck(){
   console.log(`${e.id.padEnd(16)}${`${from}-${to}`.padEnd(13)}${String(rows.length).padStart(7)}${pct(min(a=>a.optimal)).padStart(11)}${pct(max(a=>a.random)).padStart(12)}${pct(max(a=>a.longest)).padStart(11)}${pct(min(a=>a.meaningful)).padStart(11)}`);
   if(min(a=>a.optimal)<gates.errandMinOptimal||max(a=>a.random)>gates.errandMaxRandom||max(a=>a.longest)>gates.errandMaxLongest)bad++;
  }
+ console.log(`\n${'мир'.padEnd(24)}${'лучшая мин'.padStart(11)}${'лучшая сред'.padStart(12)}${'наугад макс'.padStart(12)}${'наугад сред'.padStart(12)}`);
+ for(const [name,vars] of WORLDS){
+  const rows=offers.map(o=>{const raw=buildErrand(bundle,o),q=loadQuest(raw);q.raw=raw;return analyse(inWorld(q,vars));});
+  const list=f=>rows.map(f),avg=x=>x.reduce((a,b)=>a+b,0)/x.length,opt=list(a=>a.optimal),rnd=list(a=>a.random);
+  console.log(`${name.padEnd(24)}${pct(Math.min(...opt)).padStart(11)}${pct(avg(opt)).padStart(12)}${pct(Math.max(...rnd)).padStart(12)}${pct(avg(rnd)).padStart(12)}`);
+  if(Math.min(...opt)<gates.errandMinOptimal||Math.max(...rnd)>gates.errandMaxRandomAnyWorld)bad++;
+ }
+ console.log('');
  for(const [name,f] of Object.entries(bundle.deck)){
   const l=lint(f);for(const i of l.issues)console.log(`  ${name}: [${i.kind}] ${i.why}`);
  }
@@ -182,7 +196,7 @@ async function build(path){
 const [,,cmd,...rest]=process.argv;
 const args={},files=[];
 for(let i=0;i<rest.length;i++){if(rest[i].startsWith('--')){const k=rest[i].slice(2);args[k]=rest[i+1]&&!rest[i+1].startsWith('--')?rest[++i]:true;}else files.push(rest[i]);}
-const usage=`ql check <файл>...   полный отчёт и пороги качества (выход 1, если порог не пройден)
+const usage=`ql check <файл>... [--world radar=1,zaz=-1]  полный отчёт и пороги качества (выход 1, если порог не пройден)
 ql compare <файл>...  таблица для нескольких квестов, включая старые .json
 ql play <файл> [--new] [--move 2] [--seed 1]  сыграть вслепую по одному ходу
 ql facts <файл>       места, помеченные правилами, рядом с текстом МППСС
@@ -192,7 +206,10 @@ ql bundle             собрать колоду, шаблон и поруче�
 ql deck               проверить все поручения на всех маршрутах со всеми раскладами
 ql coverage           матрица: какие правила проверяются и где`;
 try{
- if(cmd==='check'){let ok=true;for(const f of files)ok=report(await open(f))&&ok;process.exitCode=ok?0:1;}
+ if(cmd==='check'){
+  const vars=Object.fromEntries(String(args.world||'').split(',').filter(Boolean).map(x=>{const [k,v]=x.split('=');return [k,Number(v)];}));
+  let ok=true;for(const f of files)ok=report(inWorld(await open(f),vars))&&ok;process.exitCode=ok?0:1;
+ }
  else if(cmd==='compare'){
   console.log(`${'квест'.padEnd(22)}${'слов'.padStart(6)}${'лок'.padStart(5)}${'парам'.padStart(6)}${'фин'.padStart(5)}${'опт'.padStart(6)}${'наугад'.padStart(7)}${'длинн'.padStart(6)}${'значим'.padStart(7)}${'ложных'.padStart(7)}`);
   for(const f of files){const q=await open(f),r=report(q,{json:true}),a=r.analysis,raw=q.raw;console.log(`${raw.id.padEnd(22)}${String(r.lint.stats.words).padStart(6)}${String(Object.keys(raw.locations).length).padStart(5)}${String(raw.params.length).padStart(6)}${String(Object.values(raw.locations).filter(x=>x.end).length).padStart(5)}${pct(a.optimal).padStart(6)}${pct(a.random).padStart(7)}${pct(a.longest).padStart(6)}${pct(a.meaningful).padStart(7)}${pct(a.falseChoice).padStart(7)}`);}

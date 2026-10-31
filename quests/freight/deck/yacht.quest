@@ -1,5 +1,6 @@
 encounter yacht
 title Обгон яхты
+radar мелкая цель прямо по курсу, вы её догоняете.
 rules 13
 
 == yacht

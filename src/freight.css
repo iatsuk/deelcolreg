@@ -38,6 +38,9 @@ button:focus-visible{outline:2px solid var(--white);outline-offset:2px}
 .purse span{font:600 11px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .purse strong{font:400 22px/1 var(--mono);color:var(--white)}
 .courses{display:grid;gap:8px}
+.course:disabled{opacity:.55;cursor:not-allowed;border-color:var(--line)}
+.news p{font:italic 400 16px/1.45 var(--serif);color:var(--text);margin:0 0 8px;padding-left:12px;border-left:1px solid var(--amber)}
+.fitted p{font:400 14px/1.45 var(--sans);color:var(--muted);margin:0}
 .course{display:grid;gap:3px;width:100%;text-align:left;padding:12px 16px;border:1px solid var(--line);border-radius:4px}
 .course strong{font:600 15px/1.3 var(--sans)}
 .course span{font:400 13px/1.3 var(--sans);color:var(--muted)}

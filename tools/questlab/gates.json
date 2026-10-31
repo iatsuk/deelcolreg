@@ -13,5 +13,6 @@
   "minTrapCost": 0.1,
   "errandMinOptimal": 0.8,
   "errandMaxRandom": 0.3,
-  "errandMaxLongest": 0.55
+  "errandMaxLongest": 0.55,
+  "errandMaxRandomAnyWorld": 0.45
 }

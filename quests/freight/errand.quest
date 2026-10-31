@@ -14,20 +14,24 @@ param legs "участков" 1..3 =2 hidden
 param pos "участок" 1..4 =1 hidden
 param lastheat "накал" 0..100 =0 hidden
 
-def melt = spd==1?rate1:spd==2?rate2:rate3
-def legtime = spd==1?130:spd==2?90:60
+def melt = max(0,(spd==1?rate1:spd==2?rate2:rate3)-gasket*(spd==1?0:5))
+def legtime = (spd==1?130:spd==2?90:60)-screw*10
 def rate = spd==1?0:spd==2?10:30
 def heatlegal = plain?0:dark?30:25
 def heatsmug = (fish or trawl)?rate:fishtop?10+rate:pilot?10:plain?20:35
 def heat = contraband?heatsmug:heatlegal
 def oddlights = not (plain or dark or fishy or pilot or anch)
+def legtime1 = 130-screw*10
+def legtime2 = 90-screw*10
+def legtime3 = 60-screw*10
 
+crit sus>=100 and zaz==1 -> pardon
 crit sus>=100 -> caught
 crit pl<=0 -> fail
 crit t>=tlimit -> late
 
 == go
-! top=1, nav=1
+! top=1, nav=1, sus+=zaz==-1?20:0
 > -> helm
 
 == helm
@@ -36,9 +40,11 @@ crit t>=tlimit -> late
 @title Рубка «Бойкой»
 @tags r23
 Участок {pos} из {legs}. Сдать груз нужно до {tlimit|clock}.
+? zaz==-1 and pos==1 :: Инспектор Зазнобин помнит вас по прошлому протоколу и следит с первой мили.
+? zaz==1 and pos==1 :: За инспектором Зазнобиным один долг перед вами. Он такое не забывает и не любит.
 ? contraband==0 :: Бумаги в порядке. Показывайте то, что вы есть.
 ? contraband==1 :: Накладной нет. Моторный катер без видимых занятий заинтересует инспектора, рыбак на малом ходу не заинтересует.
-Малым участок занимает 2 ч 10 мин, средним 1 ч 30 мин, полным 1 ч. За участок груз потеряет: малым {rate1}, средним {rate2}, полным {rate3}.
+Участок занимает: малым {legtime1}, средним {legtime2}, полным {legtime3} минут. За участок груз потеряет: малым {rate1}, средним {max(0,rate2-gasket*5)}, полным {max(0,rate3-gasket*5)}.
 
 * Малым ходом, 5 узлов
   ~ spd=1
@@ -109,11 +115,25 @@ crit t>=tlimit -> late
 > pl>=30 -> soft
 > -> fail
 
+== pardon
+@scene sea
+@see patrol brg=6 dist=.2 aspect=12
+@speaker Зазнобин
+@title Один раз
+! zaz=0, sus=70, t+=60
+«Неподкупный» подходит на голосовую связь и держит вас у борта целый час. Зазнобин долго смотрит на вашу мачту, потом закрывает журнал.
+
+— Один раз, — говорит он. — Я был вам должен. Теперь не должен. Журнал закрыт, глаза нет.
+
+* Идти дальше
+  -> helm
+
 == caught fail
 @scene sea
 @see patrol brg=4 dist=.14 aspect=14
 @speaker Зазнобин
 @title Линейка
+! zaz=-1
 «Неподкупный» подходит к борту с точностью до сантиметра. Инспектор Зазнобин поднимается на «Бойкую» с линейкой и журналом.
 
 — Я не спрашиваю, что вы везёте, — говорит он. — Меня интересует, что вы показывали.
