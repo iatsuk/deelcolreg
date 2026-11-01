@@ -29,6 +29,10 @@ const SCENES={
  dawn:{sky:['#16233c','#54566e','#e3a56f'],sea:['#7a7780','#1a2433'],shore:'island',day:true},
  court:{sky:['#1b2330','#2c3646','#4a5566'],sea:['#333e4d','#10161f'],shore:'town',day:true,grey:true,room:true},
 };
+// What a quest may ask the sea to draw. Quest Lab checks every @scene and @see against these.
+export const SCENE_NAMES=Object.keys(SCENES);
+export const SIGHTS=[...Object.keys(VESSELS),'rock','tower','town','towline'];
+export const SIGHT_KEYS=['brg','dist','aspect','clear','gear','when'];
 const sprites={};
 function glowSprite(c,size=128){
  if(sprites[c])return sprites[c];

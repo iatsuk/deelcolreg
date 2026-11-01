@@ -99,9 +99,11 @@ test('the linter catches telegraphed answers and quiet-literary tics',()=>{
  const kinds=lint(q).issues.map(i=>i.kind);
  assert.ok(kinds.includes('тик'));assert.ok(kinds.includes('подсказка'));
 });
-test('the compiled quest in the repository matches its source',async()=>{
- const built=JSON.parse(await readFile(new URL('../quests/freight/plombir.json',import.meta.url),'utf8'));
- assert.deepEqual(built,JSON.parse(JSON.stringify(compile(source))));
+test('the compiled quests in the repository match their sources',async()=>{
+ for(const name of ['plombir','varvara']){
+  const read=ext=>readFile(new URL(`../quests/freight/${name}.${ext}`,import.meta.url),'utf8');
+  assert.deepEqual(JSON.parse(await read('json')),JSON.parse(JSON.stringify(compile(await read('quest')))));
+ }
  const bundle=JSON.parse(await readFile(new URL('../quests/freight/errands.json',import.meta.url),'utf8'));
  assert.deepEqual(bundle,JSON.parse(JSON.stringify(makeBundle())));
 });

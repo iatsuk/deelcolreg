@@ -26,6 +26,9 @@ export const UPGRADES={
  screw:{name:'Новый винт',price:240,port:'far',about:'Каждый участок на 10 минут короче.'},
  radar:{name:'Радар со списанного катера',price:300,port:'light',about:'В рубке видно, что ждёт на следующем участке.'},
 };
+// Everything a `world` parameter may be: fittings are bought, memory is earned on the water.
+export const MEMORY=['zaz','marfa'];
+export const WORLD_VARS=[...Object.keys(UPGRADES),...MEMORY];
 export const LOST_SHIP=100;
 export const DEATH_NEWS=`Слухи о вашей гибели оказались преувеличены: «Бойкую» подняли, вас откачали. Подъём обошёлся в ${LOST_SHIP} монет, а Кузьмич жалеет о потраченном на поминки.`;
 export const owned=(world,id)=>!!world.vars[id];

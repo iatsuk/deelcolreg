@@ -8,6 +8,7 @@
     "dev": "python3 -m http.server 4183 --bind 127.0.0.1",
     "test": "node --test tests/*.test.js",
     "build": "node scripts/build.js",
-    "ql": "node tools/questlab/cli.js"
+    "ql": "node tools/questlab/cli.js",
+    "gates": "node tools/questlab/cli.js gates"
   }
 }

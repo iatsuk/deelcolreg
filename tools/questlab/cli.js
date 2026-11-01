@@ -2,6 +2,7 @@
 // Quest Lab: compile, verify, playtest. Run through tools/questlab/ql (or `npm run ql --`).
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {dirname,basename,join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {loadQuest,begin,take,screen,choices,mastConfigs,mastWrite,mastRead,fill} from '../../src/quest-vm.js';
 import {RULE_TEXT} from '../../src/rules-text.js';
 import {compile,makeBundle} from './files.js';
@@ -10,6 +11,7 @@ import {EDGES,edgeBetween,PORTS,UPGRADES,enterWorld} from '../../src/freight-wor
 import {analyse} from './solve.js';
 import {lint} from './lint.js';
 import {fromLegacy} from './legacy.js';
+import {contract,bundleContract,verdict} from './contract.js';
 
 const gates=JSON.parse(await readFile(new URL('./gates.json',import.meta.url),'utf8'));
 const pct=x=>`${(x*100).toFixed(0).padStart(3)}%`;
@@ -42,7 +44,10 @@ function report(q,{json=false}={}){
   ['мёртвых выборов',a.deadChoices.length,!a.deadChoices.length,'0'],
   ['параметров только на запись',a.writeOnly.length,!a.writeOnly.length,'0'],
  ];
- if(json)return {checks,analysis:a,lint:l};
+ const wrong=contract(raw);
+ const failed=[...checks.filter(c=>!c[2]).map(c=>c[0]),...a.rules.filter(r=>r.cost<gates.minRuleCost).map(r=>r.tag)];
+ failed.push(...a.traps.filter(r=>r.cost<gates.minTrapCost).map(r=>r.tag),...wrong);
+ if(json)return {checks,analysis:a,lint:l,failed};
  console.log(`\n${raw.title||raw.id} · ${raw.id}`);
  console.log(`${locs.length} локаций · ${jumps.length} выборов · ${params} параметров · ${a.states} состояний · партия около ${a.optimalRun.medianTurns} решений\n`);
  for(const [name,value,ok,goal] of checks)console.log(`${ok?' ok ':'FAIL'} ${name.padEnd(38)} ${String(value).padStart(6)}   цель ${goal}`);
@@ -50,11 +55,12 @@ function report(q,{json=false}={}){
  if(a.traps.length){console.log('\nЛовушки: цена ошибки в момент выбора · шанс игрока с этим заблуждением');for(const r of a.traps){console.log(`${r.cost>=gates.minTrapCost?' ok ':'FAIL'} ${r.tag.padEnd(26)} −${pct(r.cost)}   партия ${pct(r.value)}`);}}
  const list=(title,items)=>{if(items.length)console.log(`\n${title}\n  ${items.slice(0,14).join('\n  ')}`);};
  list('Недостижимо:',a.unreachable);list('Тупики:',a.deadEnds);list('Мёртвые выборы:',a.deadChoices);list('Ложные выборы в:',a.falseAt);list('Только на запись:',a.writeOnly);
+ list('Имена, которых нет в игре:',wrong);
  const show=(title,run)=>console.log(`\n${title}: ${Object.entries(run.ends).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`${k} ${pct(v).trim()}`).join(' · ')}`);
  show('Финалы при лучшей игре',a.optimalRun);show('Финалы наугад',a.randomRun);
  console.log(`\nТекст: ${l.stats.words} слов, предложение ${l.stats.avgSentence}±${l.stats.sdSentence}`);
  for(const i of l.issues){console.log(`  [${i.kind}] ${i.why} × ${i.count}`);for(const w of i.where)console.log(`     ${w}`);}
- return checks.every(c=>c[2]);
+ return !failed.length;
 }
 
 // Blind playtest: one shell call per move, so an agent with no access to the source can play.
@@ -153,6 +159,23 @@ function deck(){
  return !bad;
 }
 
+// Everything a push must pass. Slower than the tests: the biggest contract takes a minute to solve exactly.
+async function allGates(){
+ const {quests}=JSON.parse(await readFile(new URL('../../quests/freight/catalog.json',import.meta.url),'utf8'));
+ let ok=true;
+ for(const f of quests){
+  const path=fileURLToPath(new URL(`../../quests/freight/${f.replace('.json','.quest')}`,import.meta.url));
+  const q=inWorld(await open(path),{}),{fresh,stale}=verdict(report(q,{json:true}).failed,gates.waivers[q.raw.id]);
+  console.log(`${fresh.length||stale.length?'FAIL':' ok '} ${q.raw.id}`);
+  for(const x of fresh)console.log(`  ниже порога: ${x}`);
+  for(const x of stale)console.log(`  долг закрыт, уберите из waivers: ${x}`);
+  ok=ok&&!fresh.length&&!stale.length;
+ }
+ const wrong=bundleContract(makeBundle());
+ for(const x of wrong)console.log(`FAIL ${x}`);
+ return deck()&&ok&&!wrong.length;
+}
+
 // Which rules the whole game actually tests, and where. Holes here decide what to write next.
 async function coverage(){
  const bundle=makeBundle(),sources=[];
@@ -204,7 +227,9 @@ ql graph <файл>       граф в формате DOT
 ql build <файл>       собрать .quest в .json для игры
 ql bundle             собрать колоду, шаблон и поручения в errands.json
 ql deck               проверить все поручения на всех маршрутах со всеми раскладами
-ql coverage           матрица: какие правила проверяются и где`;
+ql gates              все контракты, имена и расклады с учётом долгов из gates.json
+ql test               все тесты проекта
+ql coverage          матрица: какие правила проверяются и где`;
 try{
  if(cmd==='check'){
   const vars=Object.fromEntries(String(args.world||'').split(',').filter(Boolean).map(x=>{const [k,v]=x.split('=');return [k,Number(v)];}));
@@ -220,6 +245,7 @@ try{
  else if(cmd==='build')for(const f of files)await build(f);
  else if(cmd==='bundle')await buildBundle();
  else if(cmd==='deck')process.exitCode=deck()?0:1;
+ else if(cmd==='gates')process.exitCode=await allGates()?0:1;
  else if(cmd==='coverage')await coverage();
  else console.log(usage);
 }catch(e){console.error(`Ошибка: ${e.message}`);process.exitCode=2;}

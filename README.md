@@ -68,6 +68,7 @@
 npm run dev
 # http://127.0.0.1:4183
 npm test
+npm run gates
 npm run build
 ```
 
