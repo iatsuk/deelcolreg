@@ -25,6 +25,7 @@ param screw "новый винт" 0..1 =0 hidden world
 param radar "радар" 0..1 =0 hidden world
 param zaz "инспектор помнит" -1..1 =0 hidden world
 param marfa "Марфа довольна" 0..1 =0 hidden world
+param crew "вахтенный" 0..3 =0 hidden world
 
 def stackless = m1==0
 def plain = stackless and top==1 and nav==1

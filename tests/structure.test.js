@@ -16,11 +16,12 @@ const RUNTIME=['src/quest-vm.js','src/quest-assemble.js','src/freight-world.js',
 const DEPENDS={
  ...Object.fromEntries(RUNTIME.map(f=>[f,[]])),
  'src/freight-chart.js':['src/freight-world.js'],
- 'src/freight.js':[...RUNTIME,'src/freight-chart.js','src/rules-text.js'],
+ 'src/freight-port.js':['src/freight-world.js'],
+ 'src/freight.js':[...RUNTIME,'src/freight-chart.js','src/freight-port.js','src/rules-text.js'],
 };
-const PURE=['src/quest-vm.js','src/quest-assemble.js','src/freight-world.js','src/freight-practice.js'];
+const PURE=['src/quest-vm.js','src/quest-assemble.js','src/freight-world.js','src/freight-practice.js','src/freight-port.js'];
 const MAX_BYTES=20480,MAX_LINE=200;
-const LONG_LINES={'src/freight.js':14,'src/freight-sea.js':11,'src/freight-chart.js':5,'src/freight-practice.js':5,'src/freight-world.js':1,'src/quest-vm.js':2,'tools/questlab/cli.js':7,'tools/questlab/solve.js':1};
+const LONG_LINES={'src/freight.js':11,'src/freight-sea.js':11,'src/freight-chart.js':5,'src/freight-practice.js':5,'src/freight-world.js':1,'src/quest-vm.js':2,'tools/questlab/cli.js':7,'tools/questlab/solve.js':1};
 
 test('imports never form a cycle',()=>{
  const done=new Set(),walk=(file,path)=>{

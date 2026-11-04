@@ -4,12 +4,12 @@ import {Sea} from './freight-sea.js';
 import {Ambience} from './freight-audio.js';
 import {practiceRound,practiceCheck} from './freight-practice.js';
 import {buildErrand} from './quest-assemble.js';
-import {PORTS,UPGRADES,DEATH_NEWS,edgeBetween,neighbours,newWorld,newStore,dealOffers,settle,forSale,buy,owned,enterWorld,leaveWorld,hearNews,payDebts} from './freight-world.js';
+import {PORTS,DEATH_NEWS,edgeBetween,newWorld,newStore,dealOffers,settle,buy,hire,haggle,enterWorld,leaveWorld,hearNews,payDebts} from './freight-world.js';
 import {renderChart,sailChart} from './freight-chart.js';
+import {esc,portPanel} from './freight-port.js';
 
 const KEY='deelstuff.colreg.freight.v2',OLDKEY='deelstuff.colreg.freight.v1',BOOK_MINUTES=5,PENALTY=10;
 const root=document.getElementById('freight');
-const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
 const read=key=>{try{return JSON.parse(localStorage.getItem(key));}catch{return null;}};
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(store));}catch{}};
 // Earlier saves keep endings and debts; a voyage in progress cannot survive the new location ids.
@@ -39,39 +39,18 @@ function tools(extra=''){
 }
 
 // The port: what it offers and where you can go. The chart replaces the menu, passages replace practice.
-function card(label,title,brief,meta,attrs){
- return `<button class="contract" ${attrs}><span class="eyebrow">${esc(label)}</span><strong>${esc(title)}</strong><span>${esc(brief)}</span><em>${esc(meta)}</em></button>`;
-}
 function board(){
  screenName='board';q=null;state=null;offer=null;
  sea.stop();sea.own={stack:[],top:0,nav:0};
  root.className='is-board';
  root.querySelector('#hud').innerHTML='';root.querySelector('#mast').innerHTML='';
- const w=store.world,port=PORTS[w.port],live=store.active;
+ const w=store.world;
  w.offers[w.port]||=dealOffers(w.port,bundle,store.debts,Math.random,2,w.recent);save();
  root.querySelector('#chart').innerHTML=renderChart(w.port);
- const debts=Object.entries(store.debts).sort((a,b)=>b[1].length-a[1].length);
- const contract=x=>{
-  const ends=Object.keys(store.endings).filter(k=>k.startsWith(`${x.raw.id}:`)).length,all=Object.values(x.raw.locations).filter(l=>l.end).length;
-  return card('Большой контракт',x.raw.title,x.raw.brief,ends?`Финалов найдено: ${ends} из ${all}`:'Около 15 минут',`data-do="quest" data-id="${x.raw.id}"`);
- };
- const errand=(o,i)=>{
-  const e=bundle.errands[o.errand];
-  return card(`Поручение ${o.toName}`,e.title,e.brief,`${e.pay} монет · 3–5 минут · ${edgeBetween(o.from,o.to).name}`,`data-do="offer" data-i="${i}"`);
- };
- const work=live?`<section><h2>Рейс не закончен</h2>${card('Продолжить',live.title,'Судно ждёт вас там, где вы его оставили.','',`data-do="resume"`)}<button class="ghost wide" data-do="abandon">Бросить рейс</button></section>`:`<section><h2>Заказы</h2>${quests.filter(x=>x.raw.route?.[0]===w.port).map(contract).join('')}${w.offers[w.port].map(errand).join('')}</section><section><h2>Куда идти</h2><div class="courses">${neighbours(w.port).map(n=>`<button class="course" data-do="course" data-to="${n.to}"><strong>${esc(PORTS[n.to].name)}</strong><span>${esc(n.edge.name)} · встреч ${n.edge.legs}</span></button>`).join('')}</div></section>${shop(w)}`;
- const news=w.news[w.port]||[];
- const fitted=Object.keys(UPGRADES).filter(id=>owned(w,id));
- root.querySelector('#panel').innerHTML=`<header class="brand"><span class="eyebrow">Ночной фрахт · прототип</span><h1>${esc(port.name)}</h1><p>${esc(port.blurb)}</p></header><p class="purse"><span>Касса</span><strong>${w.money}</strong></p>${news.length?`<section class="news"><h2>Что говорят</h2>${news.map(t=>`<p>${esc(t)}</p>`).join('')}</section>`:''}${work}${fitted.length?`<section class="fitted"><h2>На судне</h2><p>${fitted.map(id=>esc(UPGRADES[id].name)).join(' · ')}</p></section>`:''}${debts.length?`<section class="debts"><h2>Хвосты перед инспектором</h2><p>На этих правилах вы уже попались. В море они будут встречаться чаще.</p><ul>${debts.slice(0,5).map(([rule,list])=>`<li><button class="rule-link" data-do="rule" data-rule="${esc(rule)}">Правило ${esc(rule)}</button><span>${esc(list[0])}</span></li>`).join('')}</ul></section>`:''}<button class="reset" data-do="reset-ask">Начать заново</button>`;
+ root.querySelector('#panel').innerHTML=portPanel(store,bundle,quests);
  tools();
 }
 
-function shop(w){
- const items=forSale(w,w.port);
- if(!items.length)return '';
- const row=u=>`<button class="course" data-do="buy" data-id="${u.id}" ${w.money<u.price?'disabled':''}><strong>${esc(u.name)} · ${u.price}</strong><span>${esc(w.money<u.price?`Не хватает ${u.price-w.money}. `:'')}${esc(u.about)}</span></button>`;
- return `<section><h2>Для судна</h2><div class="courses">${items.map(row).join('')}</div></section>`;
-}
 function askReset(){
  showDrawer('<h2>Начать заново?</h2><p class="warning">Будут стёрты касса, покупки для судна, память мира, новости портов, хвосты, найденные финалы и незаконченный рейс. Отменить это нельзя.</p><div class="after"><button class="primary danger" data-do="reset-do">Стереть всё</button><button class="ghost" data-do="close">Оставить как есть</button></div>');
 }
@@ -97,9 +76,10 @@ function persist(){store.active=state.end?null:{id:q.raw.id,title:q.raw.title,of
 function dock(){
  const w=store.world,x=q.raw,pay=x.pay||0,kept=q.index.money!==undefined?state.v[q.index.money]:w.money+(state.end==='win'?pay:state.end==='soft'?Math.floor(pay/2):0);
  const end=state.end,local=state.loc.split('.').pop();
+ const fee=offer?bundle.errands[offer.errand].pay:0,earned=end==='win'?fee:end==='soft'?Math.floor(fee/2):0;
  leaveWorld(q,state,w);
  payDebts(store.debts,offer?offer.picks.flatMap(p=>bundle.deck[p].rules):[],state.notes);
- settle(w,offer||{to:x.route?.[1]||w.port},end,kept);
+ settle(w,offer||{to:x.route?.[1]||w.port},end,kept+haggle(w,earned));
  hearNews(w,w.port,end==='death'?DEATH_NEWS:x.news?.[local]);
  save();
 }
@@ -245,6 +225,7 @@ function onClick(e){
  else if(action==='reset-ask'){if(!sailing)askReset();}
  else if(action==='reset-do')resetAll();
  else if(action==='buy'){if(buy(store.world,id)){save();board();}}
+ else if(action==='hire'){if(hire(store.world,id)){save();board();}}
  else if(action==='choice')choose(id);
  else if(action==='slot')slotNext(+i,mode);
  else if(action==='flip')flip(what,mode);

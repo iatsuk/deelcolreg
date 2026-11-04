@@ -26,9 +26,25 @@ export const UPGRADES={
  screw:{name:'Новый винт',price:240,port:'far',about:'Каждый участок на 10 минут короче.'},
  radar:{name:'Радар со списанного катера',price:300,port:'light',about:'В рубке видно, что ждёт на следующем участке.'},
 };
-// Everything a `world` parameter may be: fittings are bought, memory is earned on the water.
+// A watchkeeper stands in the wheelhouse instead of Venya. Each is right about some lights and wrong about others,
+// and quests pick their lines by the number in `crew`. Hiring another one sends the current one home.
+export const CREW={
+ gosha:{n:1,name:'Гоша',price:30,port:'old',about:'Матрос с парома «Ласточка», списан после суда за честность. Первым замечает любой огонь и боится каждого.'},
+ gena:{n:2,name:'Геннадий Палыч',price:70,port:'fish',about:'Учил всю слободу водить на одном тракторе. Море понимает по правилам дорожного движения.'},
+ zina:{n:3,name:'Зинаида Павловна',price:40,port:'light',about:'Заведовала буфетом «Северного холода» на маяке. Пересчитывает огни, как сдачу, и торгуется за каждую минуту.'},
+};
+export const mate=world=>Object.values(CREW).find(c=>c.n===world.vars.crew)||null;
+export const hirable=(world,port)=>Object.entries(CREW).filter(([,c])=>c.port===port&&c.n!==world.vars.crew).map(([id,c])=>({id,...c}));
+export function hire(world,id){
+ const c=CREW[id];
+ if(!c||c.port!==world.port||c.n===world.vars.crew||world.money<c.price)return false;
+ world.money-=c.price;world.vars.crew=c.n;return true;
+}
+// Zinaida haggles: while she is aboard an errand pays a fifth more than the client offered.
+export const haggle=(world,pay)=>world.vars.crew===CREW.zina.n?Math.floor(pay/5):0;
+// Everything a `world` parameter may be: fittings are bought, memory is earned on the water, the watchkeeper is hired.
 export const MEMORY=['zaz','marfa'];
-export const WORLD_VARS=[...Object.keys(UPGRADES),...MEMORY];
+export const WORLD_VARS=[...Object.keys(UPGRADES),...MEMORY,'crew'];
 export const LOST_SHIP=100;
 export const DEATH_NEWS=`Слухи о вашей гибели оказались преувеличены: «Бойкую» подняли, вас откачали. Подъём обошёлся в ${LOST_SHIP} монет, а Кузьмич жалеет о потраченном на поминки.`;
 export const owned=(world,id)=>!!world.vars[id];

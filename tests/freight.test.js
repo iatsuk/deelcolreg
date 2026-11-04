@@ -12,6 +12,8 @@ import {practiceRound,practiceCheck} from '../src/freight-practice.js';
 import {buildErrand,splice} from '../src/quest-assemble.js';
 import {PORTS,EDGES,UPGRADES,DEATH_NEWS,LOST_SHIP,edgeBetween,neighbours,newWorld,newStore,dealOffers,pickEncounters,settle,forSale,buy,enterWorld,leaveWorld,hearNews,payDebts} from '../src/freight-world.js';
 import {renderChart} from '../src/freight-chart.js';
+import {CREW,hire,hirable,mate,haggle} from '../src/freight-world.js';
+import {portPanel} from '../src/freight-port.js';
 
 const build=src=>{const raw=compile(src),q=loadQuest(raw);q.raw=raw;return q;};
 const seeded=n=>{let r=n>>>0;return ()=>{r=(r+0x6D2B79F5)>>>0;let t=r;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;};};
@@ -353,6 +355,35 @@ test('a pleased Marfa keeps a slip out of the log',()=>{
  assert.match(strict.view,/В журнал пишу/);assert.match(kind.view,/В журнал не пишу/);
  const on=x=>go(x.q,x.s,/Выйти в море/).v[x.q.index.sus];
  assert.equal(on(strict),15);assert.equal(on(kind),0);
+});
+test('a watchkeeper is hired in their own port, sends the last one home and haggles',()=>{
+ const w=world({},100);
+ assert.equal(hire(w,'gena'),false,'Геннадия Палыча нанимают в Рыбачьей слободе');
+ assert.ok(hire(w,'gosha'));assert.equal(w.money,70);assert.equal(mate(w).name,'Гоша');
+ assert.equal(hire(w,'gosha'),false,'одного и того же второй раз не нанимают');
+ assert.deepEqual(hirable(w,'old'),[]);assert.equal(haggle(w,160),0);
+ w.port='light';assert.ok(hire(w,'zina'));assert.equal(w.vars.crew,CREW.zina.n);assert.equal(w.money,30);
+ assert.equal(haggle(w,160),32);assert.deepEqual(hirable(w,'old').map(c=>c.id),['gosha']);
+ w.port='fish';assert.equal(hire(w,'gena'),false,'денег мало');
+ for(const [id,c] of Object.entries(CREW))assert.ok(PORTS[c.port],id);
+ assert.ok(plombir().params.some(p=>p.id==='crew'&&p.world));
+});
+test('every encounter gives each watchkeeper a line, and Venya keeps quiet beside them',()=>{
+ for(const [name,f] of Object.entries(bundle.deck)){
+  const text=(f.locations[`${f.start}__`]||f.locations[f.start]).text;
+  for(const c of Object.values(CREW))assert.ok(text.some(p=>new RegExp(`crew==${c.n}\\b`).test(p.when||'')),`${name}: нет реплики для «${c.name}»`);
+  for(const p of text.filter(p=>/Веня/.test(p.text)))assert.match(p.when||'',/crew==0/,`${name}: Веня говорит при вахтенном`);
+ }
+});
+test('the port offers its watchkeeper, shows who stands the watch and the haggled pay',()=>{
+ const store=newStore(),w=store.world;
+ w.port='light';w.offers.light=[{errand:'piano',from:'old',to:'fish',toName:PORTS.fish.to}];
+ assert.match(portPanel(store,bundle,[]),/data-do="hire" data-id="zina"/);
+ assert.match(portPanel(store,bundle,[]),new RegExp(`${bundle.errands.piano.pay} монет`));
+ w.vars.crew=CREW.zina.n;
+ const html=portPanel(store,bundle,[]);
+ assert.doesNotMatch(html,/data-id="zina"/);assert.match(html,/на вахте Зинаида Павловна/);
+ assert.match(html,new RegExp(`${bundle.errands.piano.pay*6/5} монет`));
 });
 test('ports remember what happened, newest first, three at most',()=>{
  const w=newWorld();
