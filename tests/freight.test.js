@@ -13,6 +13,7 @@ import {buildErrand,splice} from '../src/quest-assemble.js';
 import {PORTS,EDGES,UPGRADES,DEATH_NEWS,LOST_SHIP,edgeBetween,neighbours,newWorld,newStore,dealOffers,pickEncounters,settle,forSale,buy,enterWorld,leaveWorld,hearNews,payDebts} from '../src/freight-world.js';
 import {renderChart} from '../src/freight-chart.js';
 import {CREW,hire,hirable,mate,haggle} from '../src/freight-world.js';
+import {spawnSync} from 'node:child_process';
 import {portPanel} from '../src/freight-port.js';
 
 const build=src=>{const raw=compile(src),q=loadQuest(raw);q.raw=raw;return q;};
@@ -384,6 +385,15 @@ test('the port offers its watchkeeper, shows who stands the watch and the haggle
  const html=portPanel(store,bundle,[]);
  assert.doesNotMatch(html,/data-id="zina"/);assert.match(html,/на вахте Зинаида Павловна/);
  assert.match(html,new RegExp(`${bundle.errands.piano.pay*6/5} монет`));
+});
+test('ql roll never reuses a seed, repeats a printed one exactly and keeps every die on its faces',()=>{
+ const roll=(...a)=>spawnSync(process.execPath,[new URL('../tools/questlab/cli.js',import.meta.url).pathname,'roll',...a],{encoding:'utf8'}).stdout.trim();
+ const once=roll('12','20','--seed','1793797733123296250');
+ assert.equal(once,roll('12','20','--seed','1793797733123296250'));
+ const [,d12,d20]=once.match(/d12=(\d+) d20=(\d+)/).map(Number);
+ assert.ok(d12>=1&&d12<=12&&d20>=1&&d20<=20,once);
+ const a=roll('6'),b=roll('6');
+ assert.match(a,/^seed \d{19}: d6=[1-6]$/);assert.notEqual(a.split(':')[0],b.split(':')[0],'два броска подряд получили один seed');
 });
 test('ports remember what happened, newest first, three at most',()=>{
  const w=newWorld();

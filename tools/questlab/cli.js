@@ -215,6 +215,16 @@ async function build(path){
  const q=await open(path),out=join(dirname(path),`${basename(path,'.quest')}.json`);
  await writeFile(out,`${JSON.stringify(q.raw)}\n`);console.log(`${out}: ${(JSON.stringify(q.raw).length/1024).toFixed(1)} КБ`);
 }
+// Dice for the author, not the game. The seed is Unix seconds with nanoseconds from the monotonic clock: two runs
+// cannot share a nanosecond, and the printed seed repeats the roll for anyone who wants to check it.
+function roll(sides,fixed){
+ const dice=(sides.length?sides:['20']).map(Number);
+ if(dice.some(n=>!Number.isInteger(n)||n<2))throw new Error('у кости целое число граней, не меньше двух');
+ if(fixed!==undefined&&!/^\d+$/.test(fixed))throw new Error('seed — целое неотрицательное число');
+ const seed=fixed!==undefined?BigInt(fixed):BigInt(Math.floor(Date.now()/1000))*1000000000n+process.hrtime.bigint()%1000000000n;
+ const rand=seeded(Number((seed^seed>>32n)&0xffffffffn));
+ console.log(`seed ${seed}: ${dice.map(n=>`d${n}=${1+Math.floor(rand()*n)}`).join(' ')}`);
+}
 
 const [,,cmd,...rest]=process.argv;
 const args={},files=[];
@@ -229,7 +239,8 @@ ql bundle             собрать колоду, шаблон и поруче�
 ql deck               проверить все поручения на всех маршрутах со всеми раскладами
 ql gates              все контракты, имена и расклады с учётом долгов из gates.json
 ql test               все тесты проекта
-ql coverage          матрица: какие правила проверяются и где`;
+ql coverage          матрица: какие правила проверяются и где
+ql roll 12 20 [--seed N]  жребий автора: все кости из одного seed, seed — секунды и наносекунды`;
 try{
  if(cmd==='check'){
   const vars=Object.fromEntries(String(args.world||'').split(',').filter(Boolean).map(x=>{const [k,v]=x.split('=');return [k,Number(v)];}));
@@ -247,5 +258,6 @@ try{
  else if(cmd==='deck')process.exitCode=deck()?0:1;
  else if(cmd==='gates')process.exitCode=await allGates()?0:1;
  else if(cmd==='coverage')await coverage();
+ else if(cmd==='roll')roll(files,args.seed===undefined?undefined:String(args.seed));
  else console.log(usage);
 }catch(e){console.error(`Ошибка: ${e.message}`);process.exitCode=2;}
