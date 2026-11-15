@@ -50,10 +50,8 @@ page. The old textbook and the prototypes were removed in 0.13; the last commit 
   compute exact probabilities. `@roll` moves the location's body to `<id>__`.
 - **The solver sees numbers, not text.** Conditional paragraphs (`? cond ::`), radar lines and
   watchkeeper lines change what the player knows, not the state. Balance them by hand.
-- **Saves are a contract with players.** The game keeps them under `deelstuff.colreg.freight.v2`;
-  endings and debts migrate from v1. Earlier versions of the site left other `deelstuff.colreg.*` keys in
-  players' browsers; nothing reads them now. Renamed locations break unfinished voyages, and a breaking
-  change needs a new key with a migration.
+- **Saves are a contract with players.** The game keeps them under `deelstuff.colreg.freight.v2`.
+  Renamed locations break unfinished voyages, and a breaking change needs a new key with a migration.
 - **Legal pages stay true and reachable.** The owner is in Germany. Impressum and Datenschutz open from
   every screen («О проекте» in the tools bar, the port footer) and from `#impressum` and `#datenschutz`.
   When the site stores something new or loads anything external, update `src/freight-about.js` in the
@@ -72,7 +70,7 @@ page. The old textbook and the prototypes were removed in 0.13; the last commit 
 
 ## Contracts with the outside
 
-Players' saves under the `deelstuff.colreg.*` localStorage keys, and the published URLs. `/` and
+Players' saves under `deelstuff.colreg.freight.v2`, and the published URLs. `/` and
 `freight.html` open the game, which also answers `#impressum`, `#datenschutz`, `#sources`, `#rules`,
 `#rule-N` and `#annex-N` for old links and bookmarks. Any other missing path gets `404.html`, which sends
 the visitor to `/`. Nothing else calls this project.

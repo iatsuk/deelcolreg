@@ -396,7 +396,8 @@ test('root page opens the game',async()=>{
 });
 test('legal pages reachable and true',async()=>{
  const source=await readFile(new URL('../src/freight.js',import.meta.url),'utf8');
- for(const key of source.match(/const KEY='([^']+)',OLDKEY='([^']+)'/).slice(1))assert.ok(ABOUT.datenschutz.html.includes(key),`Datenschutz не называет ключ ${key}`);
+ const key=source.match(/const KEY='([^']+)'/)[1];
+ assert.ok(ABOUT.datenschutz.html.includes(key),`Datenschutz не называет ключ ${key}`);
  for(const id of ['impressum','datenschutz'])assert.match(ABOUT[id].html,/Koppoldstr\. 1.*contact@deelstuff\.com/s,id);
  const store=newStore();store.world.offers.old=[];
  const panel=portPanel(store,bundle,[]);

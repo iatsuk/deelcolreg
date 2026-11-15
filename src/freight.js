@@ -9,13 +9,11 @@ import {esc,portPanel} from './freight-port.js';
 import {ABOUT,aboutPage} from './freight-about.js';
 import {bookList,ruleHtml} from './freight-book.js';
 
-const KEY='deelstuff.colreg.freight.v2',OLDKEY='deelstuff.colreg.freight.v1',BOOK_MINUTES=5,PENALTY=10;
+const KEY='deelstuff.colreg.freight.v2',BOOK_MINUTES=5,PENALTY=10;
 const root=document.getElementById('freight');
 const read=key=>{try{return JSON.parse(localStorage.getItem(key));}catch{return null;}};
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(store));}catch{}};
-// Earlier saves keep endings and debts; a voyage in progress cannot survive the new location ids.
-const earlier=read(OLDKEY)||{};
-const store={...newStore(),endings:earlier.endings||{},debts:earlier.debts||{},...read(KEY)};
+const store={...newStore(),...read(KEY)};
 store.world={...newWorld(),...store.world};
 const ENDLABEL={win:'Удалось',soft:'Удалось наполовину',fail:'Провал',death:'Гибель'};
 const LAMPS=['','Белый','Красный','Зелёный'],LAMPCLASS=['off','white','red','green'];
@@ -58,7 +56,6 @@ function askReset(){
  showDrawer('<h2>Начать заново?</h2><p class="warning">Будут стёрты касса, покупки для судна, память мира, новости портов, хвосты, найденные финалы и незаконченный рейс. Отменить это нельзя.</p><div class="after"><button class="primary danger" data-do="reset-do">Стереть всё</button><button class="ghost" data-do="close">Оставить как есть</button></div>');
 }
 function resetAll(){
- try{localStorage.removeItem(OLDKEY);}catch{}
  Object.assign(store,newStore());save();closeDrawer();board();
 }
 function questFor(o){const raw=buildErrand(bundle,o),x=loadQuest(raw);x.raw=raw;return x;}
