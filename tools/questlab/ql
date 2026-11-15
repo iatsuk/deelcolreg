@@ -1,7 +1,8 @@
 #!/bin/sh
-# Finds a Node 24 even when none is on PATH, then runs the Quest Lab or, with `test`, every test.
+# Finds a Node 24 even when none is on PATH, then runs the Quest Lab, or every test with `test`, or the static build with `site`.
 here="$(cd "$(dirname "$0")" && pwd)"
 if command -v node >/dev/null 2>&1; then runner=node
 else runner="$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"; fi
 if [ "$1" = test ]; then cd "$here/../.." && exec "$runner" --test tests/*.test.js; fi
+if [ "$1" = site ]; then cd "$here/../.." && exec "$runner" scripts/build.js; fi
 exec "$runner" "$here/cli.js" "$@"
