@@ -26,6 +26,9 @@ test('verified corrections survive imports',()=>{
  assert.match(ANNEX_TEXT[0].text,/был не менее 27°/);
  assert.doesNotMatch(ANNEX_TEXT[2].text,/200 мм для судов длиной 12/);
  assert.match(ANNEX_TEXT[3].text,/SOS/);
+ assert.doesNotMatch(RULE_TEXT.find(r=>r.id===26).html,/корзин|может выставлять:|может выставлять дополнительные/);
+ assert.doesNotMatch(RULE_TEXT.find(r=>r.id===27).text,/Допускается использовать два красных/);
+ assert.match(RULE_TEXT.find(r=>r.id===22).html,/объектах: <ul> <li>белый круговой огонь - 3 мили/);
  assert.doesNotMatch(ANNEX_TEXT[3].text,/Yes|Charly|EPIRB \(/);
 });
 test('rule boundaries stay separate',()=>{

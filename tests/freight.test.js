@@ -141,7 +141,7 @@ test('a skipper who reads the lights brings the cargo in solid',()=>{
  assert.equal(s.loc,'cross.cross__');
  s=go(q,s,/Держать курс/);s=go(q,s,/Дальше/);
  assert.equal(s.loc,'dawn');
- s=set(q,s,[6],0,0,'shapes');s=go(q,s,/Поднять знаки/);
+ s=set(q,s,[3,2],0,0,'shapes');s=go(q,s,/Поднять знаки/);
  assert.equal(s.loc,'dawn-ok');
  s=go(q,s,/Идти дальше/);s=go(q,s,/Идти к причалу/);
  assert.equal(s.loc,'end-solid');assert.equal(s.end,'win');assert.deepEqual(s.notes,[]);
