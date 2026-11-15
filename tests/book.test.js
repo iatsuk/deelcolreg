@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RULE_TEXT,ANNEX_TEXT} from '../src/rules-text.js';
 import {bookList,ruleHtml} from '../src/freight-book.js';
+import {figuresFor,lightsView,bearingView,RANGES} from '../src/freight-figures.js';
+import {blasts} from '../src/freight-signals.js';
 
 // The rule text goes into innerHTML and is quoted as the norm, so its shape and the recorded corrections are guarded here.
 test('library complete and inert',()=>{
@@ -66,4 +68,45 @@ test('typesetting keeps every word',()=>{
   const page=ruleHtml(e[0]),body=page.slice(page.indexOf('<div class="rule-body">')+23,page.lastIndexOf('</div><nav class="rule-pager">'));
   assert.equal(words(body),words(e[1].html.replace(/<a [^>]*>|<\/a>/g,'')),e[0]);
  }
+});
+test('figures follow light sectors',()=>{
+ assert.match(lightsView('patrol',180),/кормовой.*13\(b\)/s);
+ assert.match(lightsView('patrol',0),/бортовой красный, бортовой зелёный.*14\(b\)/s);
+ assert.match(lightsView('tug',-150),/жёлтый буксировочный/);
+ assert.doesNotMatch(lightsView('yacht',0),/14\(b\)/);
+ assert.deepEqual(blasts('- -.'),[[0,5],[7,5],[13,1]]);
+ assert.match(ruleHtml('21',false,figuresFor),/class="figure fig-lights".*class="rule-body"/s);
+ assert.equal(figuresFor('12'),'');
+ assert.deepEqual(blasts('.  -','morse'),[[0,.25],[1,.75]]);
+ assert.match(figuresFor('27'),/fig-lights.*fig-day.*27\(d\).*27\(f\)/s);
+ assert.match(figuresFor('annex-4'),/data-beat="morse".*fig-distress.*1\(k\)/s);
+});
+test('situation figures follow rules',()=>{
+ assert.match(bearingView('15',40),/уступаете вы.*Правило 15/);
+ assert.match(bearingView('17',-40),/17\(a\)\(i\)/);
+ assert.match(bearingView('15',150),/Правило 13/);
+ assert.match(bearingView('19',30),/поворота влево, если цель не обгоняемая \(19\(d\)\(i\)\)/);
+ assert.doesNotMatch(bearingView('19',180),/вправо|влево \(/);
+ assert.match(bearingView('17',-3),/Правило 14/);
+ assert.match(bearingView('19',-120),/влево \(19\(d\)\(ii\)\)/);
+ assert.match(lightsView('nuc',30),/красный круговой ×2, бортовой зелёный/);
+ assert.match(lightsView('pilot',-30),/белый круговой, красный круговой, бортовой красный/);
+ assert.match(figuresFor('27'),/27\(e\)\(ii\)/);
+ assert.match(figuresFor('annex-2'),/2\(a\)\(iii\)/);
+ assert.match(figuresFor('annex-3'),/data-hz="110"/);
+ assert.doesNotMatch(figuresFor('annex-3'),/fig-lamp/);
+ assert.match(figuresFor('annex-1'),/2\(a\)\(ii\)/);
+});
+test('visibility figure matches Rule 22',()=>{
+ const text=RULE_TEXT.find(r=>r.id===22).text,mile=n=>n===1?'1 мили':n<5?`${n} мили`:`${n} миль`;
+ const say=['топовый огонь','бортовой огонь','кормовой огонь','буксировочный огонь','белый, красный, зелёный или жёлтый круговой огонь'];
+ for(const [i,band] of [[0,0],[1,1],[3,2]]){
+  const point=text.split(/На судах длиной|На малозаметных/)[band+1];
+  RANGES[i][1].forEach((m,k)=>assert.ok(point.includes(`${say[k]} - ${mile(m)}`),`${RANGES[i][0]}: ${say[k]}`));
+ }
+ assert.match(text,/если длина судна менее 20 м - 3 мили/);
+ assert.deepEqual(RANGES[2][1].slice(1),RANGES[1][1].slice(1));
+ const annex=ANNEX_TEXT[0].text;
+ for(const fact of ['не менее 6 м над корпусом','более 12 м над корпусом','на 4.5 м выше','не менее половины длины судна','превышало 100 м','четверти длины судна'])assert.ok(annex.includes(fact),fact);
+ assert.equal(RANGES[2][1][0],3);
 });

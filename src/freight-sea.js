@@ -18,9 +18,17 @@ const VESSELS={
  yacht:{len:30,beam:8,deck:4,sail:true,house:[],lights:[...side(.8,3,8),{c:'w',l:-1,t:0,h:9,arc:'stern'}]},
  aground:{len:170,beam:26,deck:18,house:[[-.6,.28,34]],list:.05,lights:[{c:'w',l:.86,t:0,h:40,arc:'all'},{c:'w',l:-.9,t:0,h:24,arc:'all'},{c:'r',l:-.1,t:0,h:66,arc:'all'},{c:'r',l:-.1,t:0,h:52,arc:'all'}]},
  dredger:{len:130,beam:30,deck:14,house:[[0,.4,30]],lights:[{c:'r',l:0,t:0,h:72,arc:'all'},{c:'w',l:0,t:0,h:58,arc:'all'},{c:'r',l:0,t:0,h:44,arc:'all'}]},
+ nuc:{len:110,beam:18,deck:12,house:[[-.6,.3,26]],lights:[{c:'r',l:-.5,t:0,h:62,arc:'all'},{c:'r',l:-.5,t:0,h:48,arc:'all'},...side(.05,9,20),{c:'w',l:-1,t:0,h:14,arc:'stern'}]},
+ pilot:{len:22,beam:6,deck:4,house:[[0,.4,8]],lights:[{c:'w',l:.1,t:0,h:24,arc:'all'},{c:'r',l:.1,t:0,h:19,arc:'all'},...side(.1,2.5,9),{c:'w',l:-1,t:0,h:6,arc:'stern'}]},
  patrolday:{len:66,beam:12,deck:9,house:[[-.1,.5,20]],balls:2,smoke:true,lights:[]},
 };
-export const visibleLights=(type,aspect)=>VESSELS[type].lights.filter(l=>IN[l.arc](aspect)).map(l=>l.c).join('');
+// A vessel as seen from this aspect, in metres: hull half-width, deck height and the lights whose sector covers the observer.
+export function silhouette(type,aspect){
+ const def=VESSELS[type],sn=Math.sin(rad(aspect)),cs=Math.cos(rad(aspect));
+ const lights=def.lights.filter(l=>IN[l.arc](aspect)).map(l=>({c:l.c,arc:l.arc,x:l.l*def.len*.5*sn-l.t*cs,h:l.h}));
+ return {half:Math.abs(sn)*def.len*.5+Math.abs(cs)*def.beam*.5,deck:def.deck,lights};
+}
+export const visibleLights=(type,aspect)=>silhouette(type,aspect).lights.map(l=>l.c).join('');
 const SCENES={
  port:{sky:['#040811','#0b1625','#1c2d42'],sea:['#142335','#060c15'],shore:'town',moon:.64},
  cape:{sky:['#040811','#0a1422','#182a3e'],sea:['#112032','#050b13'],shore:'cape',moon:.72},
@@ -206,9 +214,9 @@ export class Sea{
   if(c.type==='towline')return;
   const def=VESSELS[c.type];if(!def)return;
   const {px,y,u}=this.point(c,hz),a=c.aspect,sn=Math.sin(rad(a)),cs=Math.cos(rad(a));
-  const lat=(l,tr)=>px+(l*def.len*.5*sn-tr*cs)*u;
+  const sil=silhouette(c.type,a);
   x.globalAlpha=alpha;
-  const half=(Math.abs(sn)*def.len*.5+Math.abs(cs)*def.beam*.5)*u,dh=def.deck*u,dx=sn*def.len*.08*u;
+  const half=sil.half*u,dh=def.deck*u,dx=sn*def.len*.08*u;
   x.fillStyle=day?'#1b2230':'rgba(6,11,18,.96)';
   x.beginPath();x.moveTo(px-half,y);x.lineTo(px-half+dx*.3,y-dh);x.lineTo(px+half+dx*.3,y-dh);x.lineTo(px+half,y);x.closePath();x.fill();
   for(const [l,span,hh] of def.house){const cx=px+l*def.len*.5*sn*u,ww=(Math.abs(sn)*span*def.len*.5+Math.abs(cs)*def.beam*.42)*u;x.fillRect(cx-ww/2,y-dh-hh*u,ww,hh*u+1);}
@@ -220,10 +228,7 @@ export class Sea{
   if(def.smoke&&!this.calm)for(let i=0;i<14;i++){const p=(t*.12+i/14)%1;x.fillStyle=`rgba(40,42,52,${.3*(1-p)})`;x.beginPath();x.arc(px-p*90*u,y-34*u-p*80*u,(3+p*16)*u,0,TAU);x.fill();}
   x.globalAlpha=1;
   const size=clamp(u*30,26,130),flick=this.calm?1:.93+.07*Math.sin(t*11+(c.seed||0));
-  for(const L of def.lights){
-   if(!IN[L.arc](a))continue;
-   this.glow(x,L.c,lat(L.l,L.t),y-L.h*u,size,alpha*flick,hz,day);
-  }
+  for(const L of sil.lights)this.glow(x,L.c,px+L.x*u,y-L.h*u,size,alpha*flick,hz,day);
   if(c.type==='fisher'&&c.gear)this.glow(x,'w',px+c.gear*14*u,y-20*u,size*.9,alpha*flick,hz,day);
   if(c.type==='dredger'){
    const k=def.len*.42*u,gx=px+(c.clear||1)*k,rx=px-(c.clear||1)*k;

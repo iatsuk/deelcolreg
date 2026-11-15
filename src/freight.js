@@ -8,6 +8,8 @@ import {renderChart,sailChart} from './freight-chart.js';
 import {esc,portPanel} from './freight-port.js';
 import {ABOUT,aboutPage} from './freight-about.js';
 import {bookList,ruleHtml} from './freight-book.js';
+import {figuresFor,lightsView,bearingView} from './freight-figures.js';
+import {blasts,shapeSvg} from './freight-signals.js';
 
 const KEY='deelstuff.colreg.freight.v2',BOOK_MINUTES=5,PENALTY=10;
 const root=document.getElementById('freight');
@@ -18,8 +20,6 @@ store.world={...newWorld(),...store.world};
 const ENDLABEL={win:'Удалось',soft:'Удалось наполовину',fail:'Провал',death:'Гибель'};
 const LAMPS=['','Белый','Красный','Зелёный'],LAMPCLASS=['off','white','red','green'];
 const SHAPES=['','шар','конус вершиной вверх','конус вершиной вниз','ромб','цилиндр','корзина'];
-const SHAPEICON=['','<circle cx="12" cy="12" r="9"/>','<path d="M12 3 21 21H3z"/>','<path d="M12 21 21 3H3z"/>','<path d="M12 2 21 12 12 22 3 12z"/>','<rect x="6" y="3" width="12" height="18"/>','<path d="M3 8h18l-3 13H6zM7 8c0-7 10-7 10 0" fill="none" stroke="currentColor" stroke-width="2"/>'];
-const shapeSvg=k=>k?`<svg viewBox="0 0 24 24" aria-hidden="true">${SHAPEICON[k]}</svg>`:'';
 
 let quests=[],bundle=null,q=null,state=null,offer=null,sea=null,round=null,screenName='board',drawer=null,sailing=false;
 // The open page of the rule book, the pages behind it for «Назад», and the rules already paid for since the book opened.
@@ -34,6 +34,10 @@ function shell(){
  root.addEventListener('click',onClick);
  root.addEventListener('input',e=>{
   if(e.target.matches('.rule-search')){bookQuery=e.target.value;root.querySelector('.rule-list').innerHTML=bookList(bookQuery);}
+  const fig=e.target.closest('.fig-lights'),type=fig?.querySelector('.fig-vessel')?.value||fig?.dataset.vessel;
+  if(fig)fig.querySelector('.fig-view').innerHTML=lightsView(type,+fig.querySelector('.fig-aspect').value);
+  const turn=e.target.closest('.fig-bearing');
+  if(turn)turn.querySelector('.fig-view').innerHTML=bearingView(turn.dataset.rule,+e.target.value);
  });
  addEventListener('keydown',onKey);
 }
@@ -163,11 +167,11 @@ function flip(what,mode){
 }
 
 function showDrawer(html){
- const d=root.querySelector('#drawer');d.hidden=false;bookAt=null;
+ const d=root.querySelector('#drawer');d.hidden=false;bookAt=null;audio.hush();
  d.innerHTML=`<div class="drawer-box" role="dialog" aria-modal="true"><button class="close" data-do="close" aria-label="Закрыть">×</button>${html}</div>`;
  drawer=d;d.querySelector('.close').focus();
 }
-function closeDrawer(){if(drawer){drawer.hidden=true;drawer=null;bookAt=null;}}
+function closeDrawer(){if(drawer){drawer.hidden=true;drawer=null;bookAt=null;audio.hush();}}
 // Inside a quest each rule costs minutes once per opening of the book; going back and forth between pages is free.
 function bookGo(page,point){
  if(bookAt)trail.push({page:bookAt,scroll:drawer.querySelector('.drawer-box').scrollTop});else{trail=[];paid=new Set();}
@@ -180,12 +184,20 @@ function bookShow(page,point,scroll){
  const cost=q&&state&&!state.end&&q.index.t!==undefined?`<p class="cost">Вы листаете книгу при свете фонарика. Каждое открытое правило стоит ${BOOK_MINUTES} минут рейса.</p>`:'';
  const search=`<input class="rule-search" type="search" value="${esc(bookQuery)}" placeholder="Номер, название или слово из текста"`+
   ' aria-label="Поиск по правилам">';
- showDrawer(page==='index'?`<h2>МППСС</h2>${cost}${search}<div class="rule-list">${bookList(bookQuery)}</div>`:ruleHtml(page,trail.length>0));
+ showDrawer(page==='index'?`<h2>МППСС</h2>${cost}${search}<div class="rule-list">${bookList(bookQuery)}</div>`:ruleHtml(page,trail.length>0,figuresFor));
  bookAt=page;
  const box=drawer.querySelector('.drawer-box'),target=point&&box.querySelector(`.rule-body [data-point="${point}"]`);
  if(target){target.classList.add('is-target');target.scrollIntoView({block:'center'});}else box.scrollTop=scroll;
 }
 function bookBack(){const last=trail.pop();if(last)bookShow(last.page,null,last.scroll);}
+function signal(b){
+ const plan=blasts(b.dataset.pattern,b.dataset.beat),lamp=b.closest('.figure').querySelector('.fig-lamp');
+ if(b.dataset.kind==='sound')audio.whistle(plan,+b.dataset.hz);
+ b.classList.add('is-playing');setTimeout(()=>b.classList.remove('is-playing'),plan.at(-1).reduce((a,c)=>a+c)*1000);
+ if(lamp&&b.dataset.kind==='light')for(const [at,len] of plan){
+  setTimeout(()=>lamp.classList.add('on'),at*1000);setTimeout(()=>lamp.classList.remove('on'),(at+len)*1000);
+ }
+}
 
 // A passage is the practice: lights only, on the water between two ports. Debts come up more often
 // and a wrong call costs money, so the rules you are weak on are paid for at sea.
@@ -243,6 +255,7 @@ function onClick(e){
  else if(action==='rule')bookGo(/^annex-/.test(rule)?rule:String(parseInt(rule)),b.dataset.point);
  else if(action==='rules'||action==='book-index')bookGo('index');
  else if(action==='book-back')bookBack();
+ else if(action==='signal')signal(b);
  else if(action==='about')showDrawer(aboutPage(page));
  else if(action==='close')closeDrawer();
  else if(action==='doc'){const d=q.raw.docs.find(x=>x.id===id);showDrawer(`<h2>${esc(d.title)}</h2><ul class="doc">${d.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`);}

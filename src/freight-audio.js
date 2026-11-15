@@ -25,6 +25,17 @@ export class Ambience{
   this.master.gain.setTargetAtTime(this.on?.7:0,this.ctx.currentTime,.4);
   return this.on;
  }
+ // A ship's whistle for the rule book's signals. It plays when asked, even with the ambience off.
+ whistle(blasts,hz=196){
+  if(!this.ctx&&!this.start())return;
+  if(this.ctx.state==='suspended')this.ctx.resume();
+  this.hush();
+  const c=this.ctx,now=c.currentTime+.05,g=this.horn=c.createGain(),f=c.createBiquadFilter(),end=now+blasts.at(-1)[0]+blasts.at(-1)[1]+.5;
+  f.type='lowpass';f.frequency.value=1300;g.gain.value=0;f.connect(g);g.connect(c.destination);
+  for(const [type,pitch] of [['sawtooth',hz],['triangle',hz*2]]){const o=c.createOscillator();o.type=type;o.frequency.value=pitch;o.connect(f);o.start(now);o.stop(end);}
+  for(const [at,len] of blasts){g.gain.setTargetAtTime(.16,now+at,.04);g.gain.setTargetAtTime(0,now+at+len,.06);}
+ }
+ hush(){this.horn?.disconnect();this.horn=null;}
  radio(){
   if(!this.on)return;
   const c=this.ctx,src=c.createBufferSource(),g=c.createGain(),f=c.createBiquadFilter(),now=c.currentTime;
