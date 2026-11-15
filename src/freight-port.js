@@ -7,6 +7,10 @@ const course=n=>`<button class="course" data-do="course" data-to="${n.to}"><stro
 const row=(w,action,id,title,price,about)=>`<button class="course" data-do="${action}" data-id="${id}" ${w.money<price?'disabled':''}>`+
  `<strong>${esc(title)} · ${price}</strong><span>${esc(short(w,price)+about)}</span></button>`;
 
+const FOOTER=['<footer class="port-footer">','<button data-do="about" data-page="sources">Об игре и источники</button>',
+ '<button data-do="about" data-page="impressum">Impressum</button>','<button data-do="about" data-page="datenschutz">Datenschutz</button>',
+ '<a href="https://deelstuff.com/" target="_blank" rel="noopener">проект deelstuff ↗</a>','</footer>'].join('');
+
 export function card(label,title,brief,meta,attrs){
  return `<button class="contract" ${attrs}><span class="eyebrow">${esc(label)}</span><strong>${esc(title)}</strong><span>${esc(brief)}</span><em>${esc(meta)}</em></button>`;
 }
@@ -54,5 +58,6 @@ export function portPanel(store,bundle,quests){
   aboard.length?`<section class="fitted"><h2>На судне</h2><p>${aboard.map(esc).join(' · ')}</p></section>`:'',
   debts.length?debtList(debts):'',
   '<button class="reset" data-do="reset-ask">Начать заново</button>',
+  FOOTER,
  ].join('');
 }

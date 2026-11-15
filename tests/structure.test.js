@@ -17,7 +17,8 @@ const DEPENDS={
  ...Object.fromEntries(RUNTIME.map(f=>[f,[]])),
  'src/freight-chart.js':['src/freight-world.js'],
  'src/freight-port.js':['src/freight-world.js'],
- 'src/freight.js':[...RUNTIME,'src/freight-chart.js','src/freight-port.js','src/rules-text.js'],
+ 'src/freight-about.js':[],
+ 'src/freight.js':[...RUNTIME,'src/freight-chart.js','src/freight-port.js','src/freight-about.js','src/rules-text.js'],
 };
 const PURE=['src/quest-vm.js','src/quest-assemble.js','src/freight-world.js','src/freight-practice.js','src/freight-port.js'];
 const MAX_BYTES=20480,MAX_LINE=200;

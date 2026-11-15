@@ -17,8 +17,9 @@ JavaScript ES modules in the browser, no npm dependencies · Canvas 2D, Web Audi
 ## Scope
 
 One developer owns the project, and Claude does the work. Active code: `src/freight*`, `src/quest-*`,
-`tools/questlab/`, `quests/freight/`, `tests/`. The live textbook is `index.html` with `src/app.js`.
-Every other page and module is an early prototype: keep it working, do not extend it.
+`tools/questlab/`, `quests/freight/`, `tests/`. `index.html` is the game, and `freight.html` redirects to it.
+The old textbook (`src/app.js`, `src/pages.js`, `src/content.js`) is no longer on any page. It and every
+other page and module are early prototypes: keep them working, do not extend them.
 
 ## Where things live
 
@@ -26,6 +27,7 @@ Every other page and module is an early prototype: keep it working, do not exten
 |---|---|
 | `src/freight.js` | Wires the game: quest screen, mast, review, rule book. The only module that sees all others |
 | `src/freight-port.js` | The port panel as HTML strings, without the DOM, so tests can read it |
+| `src/freight-about.js` | Impressum, Datenschutz and sources, shown in the game's drawer |
 | `src/freight-world.js` | Ports, passages, offers, fittings, watchkeepers, world memory. Pure, shared with the Quest Lab |
 | `src/quest-vm.js`, `src/quest-assemble.js` | Quest machine without `eval`, errand assembly. Shared by the game, the Quest Lab and tests |
 | `src/freight-sea.js`, `-chart.js`, `-audio.js`, `-practice.js` | Wheelhouse view, chart, sound, light drills on passages |
@@ -52,6 +54,10 @@ Every other page and module is an early prototype: keep it working, do not exten
   endings and debts migrate from v1. The textbook and every prototype have their own
   `deelstuff.colreg.*` key. Renamed locations break unfinished voyages, and a breaking change needs a
   new key with a migration.
+- **Legal pages stay true and reachable.** The owner is in Germany. Impressum and Datenschutz open from
+  every screen («О проекте» in the tools bar, the port footer) and from `#impressum` and `#datenschutz`.
+  When the site stores something new or loads anything external, update `src/freight-about.js` in the
+  same change; a test checks that the Datenschutz names the game's storage key.
 - **Colour belongs to lights only**, and lights come from the Rule 21 sectors, never set by hand.
 - **Rule wording is checked with `ql facts`** against `rules-text.js`, not from memory. "May", "should"
   and "shall" differ, and practical advice is never presented as a rule.
@@ -66,8 +72,10 @@ Every other page and module is an early prototype: keep it working, do not exten
 
 ## Contracts with the outside
 
-Players' saves under the `deelstuff.colreg.*` localStorage keys, and the published pages with their
-anchors (`index.html#cards`, `freight.html` and the prototype pages). Nothing else calls this project.
+Players' saves under the `deelstuff.colreg.*` localStorage keys, and the published URLs. `/` and
+`freight.html` open the game, which also answers `#impressum`, `#datenschutz`, `#sources`, `#rules`,
+`#rule-N` and `#annex-N`; the prototypes link to those. The prototype pages stay at their own URLs.
+Nothing else calls this project.
 
 ## Conventions
 

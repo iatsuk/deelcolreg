@@ -1,5 +1,5 @@
 import {loadQuest,begin,take,screen,mastRead,mastWrite,mastStock,mastFits,fill} from './quest-vm.js';
-import {RULE_TEXT} from './rules-text.js';
+import {RULE_TEXT,ANNEX_TEXT} from './rules-text.js';
 import {Sea} from './freight-sea.js';
 import {Ambience} from './freight-audio.js';
 import {practiceRound,practiceCheck} from './freight-practice.js';
@@ -7,6 +7,7 @@ import {buildErrand} from './quest-assemble.js';
 import {PORTS,DEATH_NEWS,edgeBetween,newWorld,newStore,dealOffers,settle,buy,hire,haggle,enterWorld,leaveWorld,hearNews,payDebts} from './freight-world.js';
 import {renderChart,sailChart} from './freight-chart.js';
 import {esc,portPanel} from './freight-port.js';
+import {ABOUT,aboutPage} from './freight-about.js';
 
 const KEY='deelstuff.colreg.freight.v2',OLDKEY='deelstuff.colreg.freight.v1',BOOK_MINUTES=5,PENALTY=10;
 const root=document.getElementById('freight');
@@ -35,7 +36,8 @@ function shell(){
 }
 function tools(extra=''){
  const t=root.querySelector('.tools');
- t.innerHTML=`${extra}<button data-do="rules">МППСС</button><button data-do="sound" aria-pressed="${audio.on}">${audio.on?'Звук вкл':'Звук'}</button>`;
+ t.innerHTML=`${extra}<button data-do="rules">МППСС</button><button data-do="sound" aria-pressed="${audio.on}">${audio.on?'Звук вкл':'Звук'}</button>`+
+  '<button data-do="about" data-page="sources">О проекте</button>';
 }
 
 // The port: what it offers and where you can go. The chart replaces the menu, passages replace practice.
@@ -159,8 +161,9 @@ function flip(what,mode){
 }
 
 function ruleHtml(id){
- const n=parseInt(id),r=RULE_TEXT.find(x=>x.id===n);
- return r?`<h2>Правило ${n}. ${esc(r.title)}</h2><div class="rule-body">${r.html.replace(/<a [^>]*>|<\/a>/g,'')}</div>`:'<p>Правило не найдено.</p>';
+ const annex=/^annex-[1-4]$/.test(id),r=annex?ANNEX_TEXT.find(x=>x.id===id):RULE_TEXT.find(x=>x.id===parseInt(id));
+ if(!r)return '<p>Правило не найдено.</p>';
+ return `<h2>${annex?`Приложение ${id.slice(6)}`:`Правило ${r.id}`}. ${esc(r.title)}</h2><div class="rule-body">${r.html.replace(/<a [^>]*>|<\/a>/g,'')}</div>`;
 }
 function showDrawer(html){
  const d=root.querySelector('#drawer');d.hidden=false;
@@ -170,7 +173,8 @@ function showDrawer(html){
 function closeDrawer(){if(drawer){drawer.hidden=true;drawer=null;}}
 function bookIndex(){
  const cost=q&&state&&!state.end&&q.index.t!==undefined?`<p class="cost">Вы листаете книгу при свете фонарика. Каждое открытое правило стоит ${BOOK_MINUTES} минут рейса.</p>`:'';
- const list=RULE_TEXT.filter(r=>r.id>=1&&r.id<=38).map(r=>`<button class="rule-row" data-do="rule" data-rule="${r.id}"><b>${r.id}</b>${esc(r.title)}</button>`).join('');
+ const row=(id,n,title)=>`<button class="rule-row" data-do="rule" data-rule="${id}"><b>${n}</b>${esc(title)}</button>`;
+ const list=[...RULE_TEXT.map(r=>row(r.id,r.id,r.title)),...ANNEX_TEXT.map(a=>row(a.id,`П${a.id.slice(6)}`,a.title))].join('');
  showDrawer(`<h2>МППСС</h2>${cost}<div class="rule-list">${list}</div>`);
 }
 function openRule(id){
@@ -216,7 +220,7 @@ function practiceEnd(){
 function onClick(e){
  if(e.target.id==='drawer'){closeDrawer();return;}
  const b=e.target.closest('[data-do]');if(!b||b.disabled)return;
- const {do:action,id,i,mode,what,rule,to}=b.dataset;
+ const {do:action,id,i,mode,what,rule,to,page}=b.dataset;
  if(action==='quest')launch(quests.find(x=>x.raw.id===id),null,null);
  else if(action==='offer'){const o=store.world.offers[store.world.port][+i];launch(questFor(o),o,null);}
  else if(action==='resume')resume();
@@ -233,6 +237,7 @@ function onClick(e){
  else if(action==='again'){const x=q,o=offer;store.active=null;save();launch(x,o,null);}
  else if(action==='rule')openRule(rule);
  else if(action==='rules')bookIndex();
+ else if(action==='about')showDrawer(aboutPage(page));
  else if(action==='close')closeDrawer();
  else if(action==='doc'){const d=q.raw.docs.find(x=>x.id===id);showDrawer(`<h2>${esc(d.title)}</h2><ul class="doc">${d.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`);}
  else if(action==='sound'){audio.toggle();if(screenName==='quest')render();else tools();}
@@ -248,10 +253,22 @@ function onKey(e){
  if(n>=1&&n<=9){const b=root.querySelectorAll('#panel .choice:not([disabled])')[n-1];if(b)b.click();}
 }
 
-const fetchJson=async path=>(await fetch(new URL(`../quests/freight/${path}`,import.meta.url))).json();
-const catalog=await fetchJson('catalog.json');
-bundle=await fetchJson(catalog.errands);
-for(const path of catalog.quests){
- const raw=await fetchJson(path),x=loadQuest(raw);x.raw=raw;quests.push(x);
+// Links from the old textbook and the prototypes keep working: legal pages and the rule book open in the drawer.
+function route(){
+ const hash=location.hash.slice(1);
+ if(Object.hasOwn(ABOUT,hash))showDrawer(aboutPage(hash));
+ else if(hash==='rules')bookIndex();
+ else if(/^(rule-\d+|annex-[1-4])$/.test(hash))openRule(hash.startsWith('rule-')?hash.slice(5):hash);
 }
-shell();board();
+// The tools bar and the legal pages come up before the quests load, so a failed load still leaves them reachable.
+shell();tools();route();
+addEventListener('hashchange',route);
+const fetchJson=async path=>{const r=await fetch(new URL(`../quests/freight/${path}`,import.meta.url));if(!r.ok)throw new Error(path);return r.json();};
+try{
+ const catalog=await fetchJson('catalog.json');
+ bundle=await fetchJson(catalog.errands);
+ for(const path of catalog.quests){const raw=await fetchJson(path),x=loadQuest(raw);x.raw=raw;quests.push(x);}
+ board();
+}catch{
+ root.querySelector('#panel').innerHTML='<div class="page"><h2>Рейсы не загрузились</h2><p>Проверьте соединение и обновите страницу.</p></div>';
+}

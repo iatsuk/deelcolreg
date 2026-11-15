@@ -15,6 +15,7 @@ import {renderChart} from '../src/freight-chart.js';
 import {CREW,hire,hirable,mate,haggle} from '../src/freight-world.js';
 import {spawnSync} from 'node:child_process';
 import {portPanel} from '../src/freight-port.js';
+import {ABOUT,aboutPage} from '../src/freight-about.js';
 
 const build=src=>{const raw=compile(src),q=loadQuest(raw);q.raw=raw;return q;};
 const seeded=n=>{let r=n>>>0;return ()=>{r=(r+0x6D2B79F5)>>>0;let t=r;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;};};
@@ -394,6 +395,21 @@ test('ql roll never reuses a seed, repeats a printed one exactly and keeps every
  assert.ok(d12>=1&&d12<=12&&d20>=1&&d20<=20,once);
  const a=roll('6'),b=roll('6');
  assert.match(a,/^seed \d{19}: d6=[1-6]$/);assert.notEqual(a.split(':')[0],b.split(':')[0],'два броска подряд получили один seed');
+});
+test('root page opens the game',async()=>{
+ const page=name=>readFile(new URL(`../${name}`,import.meta.url),'utf8');
+ assert.match(await page('index.html'),/src="\.\/src\/freight\.js"/);
+ assert.match(await page('freight.html'),/location\.replace\('\.\/'\+location\.hash\)/);
+});
+test('legal pages reachable and true',async()=>{
+ const source=await readFile(new URL('../src/freight.js',import.meta.url),'utf8');
+ for(const key of source.match(/const KEY='([^']+)',OLDKEY='([^']+)'/).slice(1))assert.ok(ABOUT.datenschutz.html.includes(key),`Datenschutz не называет ключ ${key}`);
+ for(const id of ['impressum','datenschutz'])assert.match(ABOUT[id].html,/Koppoldstr\. 1.*contact@deelstuff\.com/s,id);
+ const store=newStore();store.world.offers.old=[];
+ const panel=portPanel(store,bundle,[]);
+ for(const id of Object.keys(ABOUT))assert.match(panel,new RegExp(`data-do="about" data-page="${id}"`),id);
+ assert.match(aboutPage('sources'),/^<h2>[^<]+<\/h2><p class="about-nav">.*data-page="impressum"/);
+ assert.equal(aboutPage('cards'),'');assert.equal(aboutPage('constructor'),'');
 });
 test('ports remember what happened, newest first, three at most',()=>{
  const w=newWorld();
