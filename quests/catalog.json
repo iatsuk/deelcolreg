@@ -1,8 +1,0 @@
-{
-  "version": 1,
-  "packages": [
-    "./stranger-watch/quest.json",
-    "./reid-crossing/quest.json",
-    "./lighthouse-lights/quest.json"
-  ]
-}

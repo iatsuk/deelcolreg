@@ -2,7 +2,8 @@ import { cp, mkdir, rm, readdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 
 // One revision for the whole module graph prevents a cached page mixing releases.
-// Source URLs stay relative, including when embedded or hosted under a subpath.
+// Source URLs stay relative, so the site also works under a subpath.
+const PAGES=['index.html','freight.html','404.html'];
 const files=(await readdir('src')).filter(name=>/\.(js|css)$/.test(name)).sort();
 const hash=createHash('sha256');
 for(const name of files)hash.update(name).update(await readFile(`src/${name}`));
@@ -12,7 +13,7 @@ await hashDirectory('assets');
 const revision=hash.digest('hex').slice(0,12);
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist', { recursive: true });
-for (const file of ['index.html', 'voyage.html', 'designs.html', 'campaign.html', 'world.html', 'sailing.html', 'expedition.html', 'freight.html', 'favicon.svg', 'src', 'assets', 'quests']) {
+for (const file of [...PAGES, 'favicon.svg', 'src', 'assets', 'quests']) {
   await cp(file, `dist/${file}`, { recursive: true });
 }
 for(const name of files.filter(name=>name.endsWith('.js'))){
@@ -20,7 +21,7 @@ for(const name of files.filter(name=>name.endsWith('.js'))){
   const source=await readFile(path,'utf8');
   await writeFile(path,source.replace(/from (['"])(\.\/[^'"]+\.js)\1/g,(_,quote,url)=>`from ${quote}${url}?v=${revision}${quote}`));
 }
-for (const name of ['index.html', 'voyage.html', 'designs.html', 'campaign.html', 'world.html', 'sailing.html', 'expedition.html', 'freight.html']) {
+for (const name of PAGES) {
   const html=await readFile(`dist/${name}`,'utf8');
   await writeFile(`dist/${name}`,html.replace(/(\.\/src\/[^"']+\.(?:js|css))(["'])/g,`$1?v=${revision}$2`));
 }

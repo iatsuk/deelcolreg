@@ -1,5 +1,4 @@
 import {loadQuest,begin,take,screen,mastRead,mastWrite,mastStock,mastFits,fill} from './quest-vm.js';
-import {RULE_TEXT,ANNEX_TEXT} from './rules-text.js';
 import {Sea} from './freight-sea.js';
 import {Ambience} from './freight-audio.js';
 import {practiceRound,practiceCheck} from './freight-practice.js';
@@ -8,6 +7,7 @@ import {PORTS,DEATH_NEWS,edgeBetween,newWorld,newStore,dealOffers,settle,buy,hir
 import {renderChart,sailChart} from './freight-chart.js';
 import {esc,portPanel} from './freight-port.js';
 import {ABOUT,aboutPage} from './freight-about.js';
+import {bookList,ruleHtml} from './freight-book.js';
 
 const KEY='deelstuff.colreg.freight.v2',OLDKEY='deelstuff.colreg.freight.v1',BOOK_MINUTES=5,PENALTY=10;
 const root=document.getElementById('freight');
@@ -32,6 +32,7 @@ function shell(){
  const fit=()=>{const wide=innerWidth>=900,panel=root.querySelector('#panel');sea.inset(wide?panel.offsetWidth:0);sea.resize();};
  addEventListener('resize',fit);fit();
  root.addEventListener('click',onClick);
+ root.addEventListener('input',e=>{if(e.target.matches('.rule-search'))root.querySelector('.rule-list').innerHTML=bookList(e.target.value);});
  addEventListener('keydown',onKey);
 }
 function tools(extra=''){
@@ -160,11 +161,6 @@ function flip(what,mode){
  const cfg=mastRead(q,mode,state.v);cfg[what]=cfg[what]?0:1;state=mastWrite(q,mode,state,cfg);render();
 }
 
-function ruleHtml(id){
- const annex=/^annex-[1-4]$/.test(id),r=annex?ANNEX_TEXT.find(x=>x.id===id):RULE_TEXT.find(x=>x.id===parseInt(id));
- if(!r)return '<p>Правило не найдено.</p>';
- return `<h2>${annex?`Приложение ${id.slice(6)}`:`Правило ${r.id}`}. ${esc(r.title)}</h2><div class="rule-body">${r.html.replace(/<a [^>]*>|<\/a>/g,'')}</div>`;
-}
 function showDrawer(html){
  const d=root.querySelector('#drawer');d.hidden=false;
  d.innerHTML=`<div class="drawer-box" role="dialog" aria-modal="true"><button class="close" data-do="close" aria-label="Закрыть">×</button>${html}</div>`;
@@ -173,9 +169,8 @@ function showDrawer(html){
 function closeDrawer(){if(drawer){drawer.hidden=true;drawer=null;}}
 function bookIndex(){
  const cost=q&&state&&!state.end&&q.index.t!==undefined?`<p class="cost">Вы листаете книгу при свете фонарика. Каждое открытое правило стоит ${BOOK_MINUTES} минут рейса.</p>`:'';
- const row=(id,n,title)=>`<button class="rule-row" data-do="rule" data-rule="${id}"><b>${n}</b>${esc(title)}</button>`;
- const list=[...RULE_TEXT.map(r=>row(r.id,r.id,r.title)),...ANNEX_TEXT.map(a=>row(a.id,`П${a.id.slice(6)}`,a.title))].join('');
- showDrawer(`<h2>МППСС</h2>${cost}<div class="rule-list">${list}</div>`);
+ const search='<input class="rule-search" type="search" placeholder="Номер, название или слово из текста" aria-label="Поиск по правилам">';
+ showDrawer(`<h2>МППСС</h2>${cost}${search}<div class="rule-list">${bookList()}</div>`);
 }
 function openRule(id){
  if(q&&state&&!state.end&&screenName==='quest'&&q.index.t!==undefined){state.v[q.index.t]+=BOOK_MINUTES;hud(screen(q,state));persist();}
@@ -253,7 +248,7 @@ function onKey(e){
  if(n>=1&&n<=9){const b=root.querySelectorAll('#panel .choice:not([disabled])')[n-1];if(b)b.click();}
 }
 
-// Links from the old textbook and the prototypes keep working: legal pages and the rule book open in the drawer.
+// Old links and bookmarks keep working: legal pages and the rule book open in the drawer.
 function route(){
  const hash=location.hash.slice(1);
  if(Object.hasOwn(ABOUT,hash))showDrawer(aboutPage(hash));

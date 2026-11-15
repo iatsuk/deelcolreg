@@ -16,10 +16,9 @@ JavaScript ES modules in the browser, no npm dependencies · Canvas 2D, Web Audi
 
 ## Scope
 
-One developer owns the project, and Claude does the work. Active code: `src/freight*`, `src/quest-*`,
-`tools/questlab/`, `quests/freight/`, `tests/`. `index.html` is the game, and `freight.html` redirects to it.
-The old textbook (`src/app.js`, `src/pages.js`, `src/content.js`) is no longer on any page. It and every
-other page and module are early prototypes: keep them working, do not extend them.
+One developer owns the project, and Claude does the work. Everything in the repository serves the game:
+`index.html`, `src/`, `tools/questlab/`, `quests/freight/`, `tests/`. `freight.html` redirects to the main
+page. The old textbook and the prototypes were removed in 0.13; the last commit that has them is `6e1bd23`.
 
 ## Where things live
 
@@ -28,10 +27,11 @@ other page and module are early prototypes: keep them working, do not extend the
 | `src/freight.js` | Wires the game: quest screen, mast, review, rule book. The only module that sees all others |
 | `src/freight-port.js` | The port panel as HTML strings, without the DOM, so tests can read it |
 | `src/freight-about.js` | Impressum, Datenschutz and sources, shown in the game's drawer |
+| `src/freight-book.js` | The rule book: every rule and annex, searchable, with part, section and editorial notes |
 | `src/freight-world.js` | Ports, passages, offers, fittings, watchkeepers, world memory. Pure, shared with the Quest Lab |
 | `src/quest-vm.js`, `src/quest-assemble.js` | Quest machine without `eval`, errand assembly. Shared by the game, the Quest Lab and tests |
 | `src/freight-sea.js`, `-chart.js`, `-audio.js`, `-practice.js` | Wheelhouse view, chart, sound, light drills on passages |
-| `src/rules-text.js` | Local COLREG text with recorded editorial fixes. Also used by the textbook |
+| `src/rules-text.js` | Local COLREG text with recorded editorial fixes, guarded by `tests/book.test.js`. Data, outside the size ceilings |
 | `quests/freight/` | `.quest` sources: contracts, `deck/` encounters, `errands/`, the `errand.quest` template. The compiled `*.json` files are **generated**; only `catalog.json`, the list of contracts, is edited by hand. `VOICE.md` and `STORY.md` are the writing rules |
 | `tools/questlab/` | Compiler, solver, prose linter, name contracts and the `ql` CLI. `gates.json` holds thresholds and known debts |
 | `tests/` | `node:test` suites. `structure.test.js` holds the module boundaries |
@@ -51,9 +51,9 @@ other page and module are early prototypes: keep them working, do not extend the
 - **The solver sees numbers, not text.** Conditional paragraphs (`? cond ::`), radar lines and
   watchkeeper lines change what the player knows, not the state. Balance them by hand.
 - **Saves are a contract with players.** The game keeps them under `deelstuff.colreg.freight.v2`;
-  endings and debts migrate from v1. The textbook and every prototype have their own
-  `deelstuff.colreg.*` key. Renamed locations break unfinished voyages, and a breaking change needs a
-  new key with a migration.
+  endings and debts migrate from v1. Earlier versions of the site left other `deelstuff.colreg.*` keys in
+  players' browsers; nothing reads them now. Renamed locations break unfinished voyages, and a breaking
+  change needs a new key with a migration.
 - **Legal pages stay true and reachable.** The owner is in Germany. Impressum and Datenschutz open from
   every screen («О проекте» in the tools bar, the port footer) and from `#impressum` and `#datenschutz`.
   When the site stores something new or loads anything external, update `src/freight-about.js` in the
@@ -74,8 +74,8 @@ other page and module are early prototypes: keep them working, do not extend the
 
 Players' saves under the `deelstuff.colreg.*` localStorage keys, and the published URLs. `/` and
 `freight.html` open the game, which also answers `#impressum`, `#datenschutz`, `#sources`, `#rules`,
-`#rule-N` and `#annex-N`; the prototypes link to those. The prototype pages stay at their own URLs.
-Nothing else calls this project.
+`#rule-N` and `#annex-N` for old links and bookmarks. Any other missing path gets `404.html`, which sends
+the visitor to `/`. Nothing else calls this project.
 
 ## Conventions
 
@@ -121,7 +121,7 @@ missing improvement.
 
 So when a change touches code with more than one caller, being convinced it is correct is not
 enough. Here that is above all `quest-vm.js` (game, Quest Lab, tests), `quest-assemble.js`,
-`freight-world.js` (game, chart, port panel, Quest Lab), `rules-text.js` (textbook and game) and
+`freight-world.js` (game, chart, port panel, Quest Lab), `rules-text.js` (rule book and `ql facts`) and
 `deck/ship.quest` (every contract and errand).
 
 - Find every caller before editing (`grep` the symbol; do not rely on the callers you happen to

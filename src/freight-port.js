@@ -51,7 +51,7 @@ export function portPanel(store,bundle,quests){
  const debts=Object.entries(store.debts).sort((a,b)=>b[1].length-a[1].length);
  const aboard=[...Object.keys(UPGRADES).filter(id=>owned(w,id)).map(id=>UPGRADES[id].name),...(mate(w)?[`на вахте ${mate(w).name}`]:[])];
  return [
-  `<header class="brand"><span class="eyebrow">Ночной фрахт · прототип</span><h1>${esc(port.name)}</h1><p>${esc(port.blurb)}</p></header>`,
+  `<header class="brand"><span class="eyebrow">Ночной фрахт · Дельный МППСС</span><h1>${esc(port.name)}</h1><p>${esc(port.blurb)}</p></header>`,
   `<p class="purse"><span>Касса</span><strong>${w.money}</strong></p>`,
   news.length?`<section class="news"><h2>Что говорят</h2>${news.map(t=>`<p>${esc(t)}</p>`).join('')}</section>`:'',
   work(store,bundle,quests),

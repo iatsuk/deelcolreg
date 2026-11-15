@@ -140,6 +140,9 @@ button:focus-visible{outline:2px solid var(--white);outline-offset:2px}
 .close{position:absolute;top:12px;right:14px;width:44px;height:44px;font-size:26px;color:var(--muted)}
 .cost{font:500 14px/1.45 var(--sans);color:var(--amber);margin:0 0 16px}
 .rule-list{display:grid;gap:2px}
+.rule-search{width:100%;box-sizing:border-box;margin:0 0 14px;padding:10px 12px;font:400 15px/1.3 var(--sans);color:var(--text);background:var(--panel-2);border:1px solid var(--line);border-radius:3px}
+.rule-none{font:400 15px/1.45 var(--sans);color:var(--muted)}
+.rule-note{font:400 14px/1.5 var(--sans);color:var(--muted);border-left:1px solid var(--line);padding-left:10px;margin:0 0 16px}
 .rule-row{display:grid;grid-template-columns:40px 1fr;text-align:left;padding:9px 6px;font:400 15px/1.35 var(--sans);border-bottom:1px solid var(--line)}
 .rule-row b{font:500 13px/1.6 var(--mono);color:var(--muted)}
 .rule-row:hover{background:var(--panel-2)}

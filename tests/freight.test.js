@@ -6,7 +6,6 @@ import {compileQuest} from '../tools/questlab/compile.js';
 import {compile,makeBundle} from '../tools/questlab/files.js';
 import {analyse} from '../tools/questlab/solve.js';
 import {lint} from '../tools/questlab/lint.js';
-import {fromLegacy} from '../tools/questlab/legacy.js';
 import {visibleLights} from '../src/freight-sea.js';
 import {practiceRound,practiceCheck} from '../src/freight-practice.js';
 import {buildErrand,splice} from '../src/quest-assemble.js';
@@ -91,12 +90,6 @@ test('rolls are chance nodes the solver can see',()=>{
  const q=build(`quest r\nparam x "x" 0..2 =0 hidden\n== a\n@roll x 1..2\n* Угадать один\n  -> check\n== check\n> x==1 -> w\n> -> l\n== w win\nДа.\n== l fail\nНет.\n`);
  assert.equal(starts(q).length,2);
  assert.equal(analyse(q).optimal,.5);
-});
-test('old dialogue quests measure as they play: every path wins',async()=>{
- const raw=fromLegacy(JSON.parse(await readFile(new URL('../quests/line/mila-cargo.json',import.meta.url),'utf8')));
- const q=loadQuest(raw);q.raw=raw;
- const a=analyse(q);
- assert.equal(a.optimal,1);assert.equal(a.random,1);assert.equal(a.meaningful,0);
 });
 test('the linter catches telegraphed answers and quiet-literary tics',()=>{
  const q=compileQuest(`quest s\nparam a "a" 0..1 =0\n== s\nОна делает вид, что занята. Он делает вид, что не видит. Они делают вид. Сделала вид снова.\n* Безопасно и внимательно\n  #good\n  -> e\n* Коротко\n  #trap:x\n  -> e\n== e win\nКонец.\n`);

@@ -18,9 +18,10 @@ const DEPENDS={
  'src/freight-chart.js':['src/freight-world.js'],
  'src/freight-port.js':['src/freight-world.js'],
  'src/freight-about.js':[],
- 'src/freight.js':[...RUNTIME,'src/freight-chart.js','src/freight-port.js','src/freight-about.js','src/rules-text.js'],
+ 'src/freight-book.js':['src/rules-text.js'],
+ 'src/freight.js':[...RUNTIME,'src/freight-chart.js','src/freight-port.js','src/freight-about.js','src/freight-book.js'],
 };
-const PURE=['src/quest-vm.js','src/quest-assemble.js','src/freight-world.js','src/freight-practice.js','src/freight-port.js'];
+const PURE=['src/quest-vm.js','src/quest-assemble.js','src/freight-world.js','src/freight-practice.js','src/freight-port.js','src/freight-book.js'];
 const MAX_BYTES=20480,MAX_LINE=200;
 const LONG_LINES={'src/freight.js':11,'src/freight-sea.js':11,'src/freight-chart.js':5,'src/freight-practice.js':5,'src/freight-world.js':1,'src/quest-vm.js':2,'tools/questlab/cli.js':7,'tools/questlab/solve.js':1};
 
@@ -33,19 +34,17 @@ test('imports never form a cycle',()=>{
  };
  for(const file of [...SOURCES,...LAB])walk(file,[]);
 });
+// The rule text is data: 290 KB of normative text, outside the ceilings, importing nothing.
+const DATA=['src/rules-text.js'];
 test('every game module is declared and imports only what it may',()=>{
- for(const file of SOURCES.filter(f=>/^src\/(freight|quest)/.test(f))){
+ for(const file of SOURCES.filter(f=>!DATA.includes(f))){
   assert.ok(DEPENDS[file],`новый модуль ${file} нужно вписать в DEPENDS`);
   for(const dep of imports(file))assert.ok(DEPENDS[file].includes(dep),`${file} не может импортировать ${dep}`);
  }
+ for(const file of DATA)assert.deepEqual(imports(file),[],file);
 });
-test('the game and the early prototypes do not reach into each other',()=>{
- for(const file of SOURCES){
-  for(const dep of imports(file)){
-   assert.ok(!dep.startsWith('tools/')&&!dep.startsWith('tests/'),`${file} импортирует инструмент ${dep}`);
-   if(!DEPENDS[file])assert.ok(!DEPENDS[dep],`прототип ${file} импортирует ${dep}`);
-  }
- }
+test('the game never imports the tools or tests',()=>{
+ for(const file of SOURCES)for(const dep of imports(file))assert.ok(!dep.startsWith('tools/')&&!dep.startsWith('tests/'),`${file} импортирует ${dep}`);
 });
 test('rules, money and quests run without a browser',()=>{
  for(const file of PURE)assert.doesNotMatch(read(file),/\b(document|window|localStorage|navigator|addEventListener|fetch)\b/,file);

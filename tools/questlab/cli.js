@@ -10,7 +10,6 @@ import {buildErrand} from '../../src/quest-assemble.js';
 import {EDGES,edgeBetween,PORTS,UPGRADES,enterWorld} from '../../src/freight-world.js';
 import {analyse} from './solve.js';
 import {lint} from './lint.js';
-import {fromLegacy} from './legacy.js';
 import {contract,bundleContract,verdict} from './contract.js';
 
 const gates=JSON.parse(await readFile(new URL('./gates.json',import.meta.url),'utf8'));
@@ -19,7 +18,7 @@ const seeded=seed=>{let r=seed>>>0;return ()=>{r=(r+0x6D2B79F5)>>>0;let t=r;t=Ma
 
 async function open(path){
  const src=await readFile(path,'utf8');
- const raw=path.endsWith('.json')?fromLegacy(JSON.parse(src)):compile(src);
+ const raw=path.endsWith('.json')?JSON.parse(src):compile(src);
  const q=loadQuest(raw);q.raw=raw;return q;
 }
 
@@ -230,7 +229,7 @@ const [,,cmd,...rest]=process.argv;
 const args={},files=[];
 for(let i=0;i<rest.length;i++){if(rest[i].startsWith('--')){const k=rest[i].slice(2);args[k]=rest[i+1]&&!rest[i+1].startsWith('--')?rest[++i]:true;}else files.push(rest[i]);}
 const usage=`ql check <файл>... [--world radar=1,zaz=-1]  полный отчёт и пороги качества (выход 1, если порог не пройден)
-ql compare <файл>...  таблица для нескольких квестов, включая старые .json
+ql compare <файл>...  таблица для нескольких квестов, .quest или собранных .json
 ql play <файл> [--new] [--move 2] [--seed 1]  сыграть вслепую по одному ходу
 ql facts <файл>       места, помеченные правилами, рядом с текстом МППСС
 ql graph <файл>       граф в формате DOT
