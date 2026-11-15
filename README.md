@@ -35,7 +35,7 @@ Node.js 24 для тестов и сборки; Python 3 для локально
 
 - `index.html`, `src/freight.js` — экран квеста, мачта, разбор и связка частей.
 - `src/freight-port.js` — панель порта; `src/freight-world.js` — порты, переходы, заказы, покупки, вахтенные и память мира.
-- `src/freight-book.js` — книга правил с поиском; `src/freight-about.js` — Impressum, Datenschutz и источники.
+- `src/freight-book.js` — книга правил с поиском, переходами и типографикой; `src/freight-about.js` — Impressum, Datenschutz и источники.
 - `src/freight-sea.js`, `src/freight-chart.js`, `src/freight-audio.js`, `src/freight-practice.js` — вид из рубки, карта, звук, огни на переходах.
 - `src/quest-vm.js` — машина текстовых квестов; `src/quest-assemble.js` — сборка квеста из частей.
 - `src/rules-text.js` — локальный нормативный текст с зафиксированными редакционными исправлениями.

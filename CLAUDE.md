@@ -27,7 +27,7 @@ page. The old textbook and the prototypes were removed in 0.13; the last commit 
 | `src/freight.js` | Wires the game: quest screen, mast, review, rule book. The only module that sees all others |
 | `src/freight-port.js` | The port panel as HTML strings, without the DOM, so tests can read it |
 | `src/freight-about.js` | Impressum, Datenschutz and sources, shown in the game's drawer |
-| `src/freight-book.js` | The rule book: every rule and annex, searchable, with part, section and editorial notes |
+| `src/freight-book.js` | The rule book: every rule and annex, searchable, typeset, linked to itself, with part, section and editorial notes |
 | `src/freight-world.js` | Ports, passages, offers, fittings, watchkeepers, world memory. Pure, shared with the Quest Lab |
 | `src/quest-vm.js`, `src/quest-assemble.js` | Quest machine without `eval`, errand assembly. Shared by the game, the Quest Lab and tests |
 | `src/freight-sea.js`, `-chart.js`, `-audio.js`, `-practice.js` | Wheelhouse view, chart, sound, light drills on passages |

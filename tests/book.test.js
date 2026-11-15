@@ -48,3 +48,22 @@ test('rule shows section, note',()=>{
  assert.doesNotMatch(ruleHtml('12'),/rule-note/);
  assert.match(ruleHtml('99'),/не найдено/);
 });
+test('book links rules together',()=>{
+ const rule=ruleHtml('34',true);
+ assert.match(rule,/data-do="book-back".*data-do="book-index"/s);
+ assert.match(rule,/class="xref" data-do="rule" data-rule="9">Правилом 9/);
+ assert.match(rule,/class="pager-prev" data-do="rule" data-rule="33".*class="pager-next" data-do="rule" data-rule="35"/s);
+ assert.doesNotMatch(ruleHtml('34'),/book-back/);
+ assert.match(ruleHtml('23'),/class="term" data-do="rule" data-rule="3" data-point="b" title="[^"]*механической установкой/);
+ assert.match(ruleHtml('22'),/<b class="num">6 миль<\/b>/);
+ assert.match(ruleHtml('22'),/data-rule="annex-1">пункте 8 Приложения I/);
+ assert.match(ruleHtml('3'),/<li data-point="m">/);
+ assert.match(bookList(),/class="rule-group">Часть A · Общие положения/);
+});
+test('typesetting keeps every word',()=>{
+ const words=html=>html.replace(/<[^>]*>|\s/g,'');
+ for(const e of [...RULE_TEXT.map(r=>[String(r.id),r]),...ANNEX_TEXT.map(a=>[a.id,a])]){
+  const page=ruleHtml(e[0]),body=page.slice(page.indexOf('<div class="rule-body">')+23,page.lastIndexOf('</div><nav class="rule-pager">'));
+  assert.equal(words(body),words(e[1].html.replace(/<a [^>]*>|<\/a>/g,'')),e[0]);
+ }
+});

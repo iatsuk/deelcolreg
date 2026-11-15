@@ -146,8 +146,34 @@ button:focus-visible{outline:2px solid var(--white);outline-offset:2px}
 .rule-row{display:grid;grid-template-columns:40px 1fr;text-align:left;padding:9px 6px;font:400 15px/1.35 var(--sans);border-bottom:1px solid var(--line)}
 .rule-row b{font:500 13px/1.6 var(--mono);color:var(--muted)}
 .rule-row:hover{background:var(--panel-2)}
-.rule-body{font:400 17px/1.55 var(--serif);color:var(--text)}
-.rule-body ol,.rule-body ul{padding-left:22px}
+.rule-group{font:600 11px/1.3 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:22px 0 6px}
+.rule-group:first-child{margin-top:4px}
+.book-nav{display:flex;gap:6px;margin:-30px 0 22px;font:500 13px/1 var(--sans)}
+.book-nav button{color:var(--muted);padding:8px 10px;border:1px solid var(--line);border-radius:3px}
+.book-nav button:hover,.rule-pager button:hover{color:var(--text);border-color:var(--muted)}
+.rule-pager{display:flex;justify-content:space-between;gap:10px;margin:32px 0 0;padding-top:16px;border-top:1px solid var(--line)}
+.rule-pager button{font:500 14px/1.3 var(--sans);color:var(--muted);padding:10px 12px;border:1px solid var(--line);border-radius:3px}
+.pager-next{margin-left:auto}
+.rule-body{font:400 17px/1.6 var(--serif);color:var(--text);max-width:36em;hyphens:auto}
+.rule-body p{margin:0 0 .8em}
+.rule-body ol{list-style:none;counter-reset:pt;padding-left:0;margin:.4em 0 .8em}
+.rule-body ol>li{counter-increment:pt;position:relative;padding-left:2.6em;margin:0 0 .75em}
+.rule-body ol>li::before{content:"(" counter(pt,lower-latin) ")";position:absolute;left:0;top:.2em;font:600 13px/1.6 var(--mono);color:var(--muted)}
+.rule-body ol[type="i"]>li::before{content:"(" counter(pt,lower-roman) ")"}
+.rule-body ol:not([type])>li::before{content:counter(pt) "."}
+.rule-body ol ol{margin-top:.5em}
+.rule-body ol ol>li{padding-left:2.9em;margin-bottom:.45em}
+.rule-body ul{padding-left:1.2em;margin:.4em 0 .6em}
+.rule-body ul>li{margin:0 0 .3em}
+.rule-body ul>li::marker{color:var(--faint)}
+.rule-body li.is-target{animation:target 2.4s ease-out}
+@keyframes target{from{background:rgba(255,242,214,.12)}to{background:transparent}}
+.rule-body .num{font-weight:600;font-variant-numeric:lining-nums;white-space:nowrap}
+.rule-body q{quotes:none;font-style:italic}
+.term,.xref{font:inherit;padding:0;text-align:inherit;text-underline-offset:3px}
+.term{text-decoration:underline dotted var(--muted)}
+.xref{text-decoration:underline;text-decoration-color:var(--faint)}
+.term:hover,.xref:hover{text-decoration-color:var(--text)}
 .rule-body h3{font:600 15px/1.4 var(--sans);margin:22px 0 8px}
 .rule-body table{width:100%;max-width:100%;border-collapse:collapse;margin:12px 0;font:400 14px/1.4 var(--sans)}
 .rule-body th,.rule-body td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}

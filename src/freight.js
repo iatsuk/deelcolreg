@@ -22,6 +22,8 @@ const SHAPEICON=['','<circle cx="12" cy="12" r="9"/>','<path d="M12 3 21 21H3z"/
 const shapeSvg=k=>k?`<svg viewBox="0 0 24 24" aria-hidden="true">${SHAPEICON[k]}</svg>`:'';
 
 let quests=[],bundle=null,q=null,state=null,offer=null,sea=null,round=null,screenName='board',drawer=null,sailing=false;
+// The open page of the rule book, the pages behind it for «Назад», and the rules already paid for since the book opened.
+let bookAt=null,trail=[],paid=new Set(),bookQuery='';
 const audio=new Ambience();
 
 function shell(){
@@ -30,7 +32,9 @@ function shell(){
  const fit=()=>{const wide=innerWidth>=900,panel=root.querySelector('#panel');sea.inset(wide?panel.offsetWidth:0);sea.resize();};
  addEventListener('resize',fit);fit();
  root.addEventListener('click',onClick);
- root.addEventListener('input',e=>{if(e.target.matches('.rule-search'))root.querySelector('.rule-list').innerHTML=bookList(e.target.value);});
+ root.addEventListener('input',e=>{
+  if(e.target.matches('.rule-search')){bookQuery=e.target.value;root.querySelector('.rule-list').innerHTML=bookList(bookQuery);}
+ });
  addEventListener('keydown',onKey);
 }
 function tools(extra=''){
@@ -159,20 +163,29 @@ function flip(what,mode){
 }
 
 function showDrawer(html){
- const d=root.querySelector('#drawer');d.hidden=false;
+ const d=root.querySelector('#drawer');d.hidden=false;bookAt=null;
  d.innerHTML=`<div class="drawer-box" role="dialog" aria-modal="true"><button class="close" data-do="close" aria-label="Закрыть">×</button>${html}</div>`;
  drawer=d;d.querySelector('.close').focus();
 }
-function closeDrawer(){if(drawer){drawer.hidden=true;drawer=null;}}
-function bookIndex(){
+function closeDrawer(){if(drawer){drawer.hidden=true;drawer=null;bookAt=null;}}
+// Inside a quest each rule costs minutes once per opening of the book; going back and forth between pages is free.
+function bookGo(page,point){
+ if(bookAt)trail.push({page:bookAt,scroll:drawer.querySelector('.drawer-box').scrollTop});else{trail=[];paid=new Set();}
+ const due=page!=='index'&&!paid.has(page)&&screenName==='quest'&&q&&state&&!state.end&&q.index.t!==undefined;
+ if(due){state.v[q.index.t]+=BOOK_MINUTES;hud(screen(q,state));persist();}
+ if(page!=='index')paid.add(page);
+ bookShow(page,point,0);
+}
+function bookShow(page,point,scroll){
  const cost=q&&state&&!state.end&&q.index.t!==undefined?`<p class="cost">Вы листаете книгу при свете фонарика. Каждое открытое правило стоит ${BOOK_MINUTES} минут рейса.</p>`:'';
- const search='<input class="rule-search" type="search" placeholder="Номер, название или слово из текста" aria-label="Поиск по правилам">';
- showDrawer(`<h2>МППСС</h2>${cost}${search}<div class="rule-list">${bookList()}</div>`);
+ const search=`<input class="rule-search" type="search" value="${esc(bookQuery)}" placeholder="Номер, название или слово из текста"`+
+  ' aria-label="Поиск по правилам">';
+ showDrawer(page==='index'?`<h2>МППСС</h2>${cost}${search}<div class="rule-list">${bookList(bookQuery)}</div>`:ruleHtml(page,trail.length>0));
+ bookAt=page;
+ const box=drawer.querySelector('.drawer-box'),target=point&&box.querySelector(`.rule-body [data-point="${point}"]`);
+ if(target){target.classList.add('is-target');target.scrollIntoView({block:'center'});}else box.scrollTop=scroll;
 }
-function openRule(id){
- if(q&&state&&!state.end&&screenName==='quest'&&q.index.t!==undefined){state.v[q.index.t]+=BOOK_MINUTES;hud(screen(q,state));persist();}
- showDrawer(ruleHtml(id));
-}
+function bookBack(){const last=trail.pop();if(last)bookShow(last.page,null,last.scroll);}
 
 // A passage is the practice: lights only, on the water between two ports. Debts come up more often
 // and a wrong call costs money, so the rules you are weak on are paid for at sea.
@@ -227,8 +240,9 @@ function onClick(e){
  else if(action==='flip')flip(what,mode);
  else if(action==='home'){if(state?.end)dock();board();}
  else if(action==='again'){const x=q,o=offer;store.active=null;save();launch(x,o,null);}
- else if(action==='rule')openRule(rule);
- else if(action==='rules')bookIndex();
+ else if(action==='rule')bookGo(/^annex-/.test(rule)?rule:String(parseInt(rule)),b.dataset.point);
+ else if(action==='rules'||action==='book-index')bookGo('index');
+ else if(action==='book-back')bookBack();
  else if(action==='about')showDrawer(aboutPage(page));
  else if(action==='close')closeDrawer();
  else if(action==='doc'){const d=q.raw.docs.find(x=>x.id===id);showDrawer(`<h2>${esc(d.title)}</h2><ul class="doc">${d.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`);}
@@ -249,8 +263,8 @@ function onKey(e){
 function route(){
  const hash=location.hash.slice(1);
  if(Object.hasOwn(ABOUT,hash))showDrawer(aboutPage(hash));
- else if(hash==='rules')bookIndex();
- else if(/^(rule-\d+|annex-[1-4])$/.test(hash))openRule(hash.startsWith('rule-')?hash.slice(5):hash);
+ else if(hash==='rules')bookGo('index');
+ else if(/^(rule-\d+|annex-[1-4])$/.test(hash))bookGo(hash.startsWith('rule-')?hash.slice(5):hash);
 }
 // The tools bar and the legal pages come up before the quests load, so a failed load still leaves them reachable.
 shell();tools();route();

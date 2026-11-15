@@ -98,7 +98,7 @@
 
 - `src/quest-vm.js` — машина квестов без `eval`, общая для браузера и инструментов; `src/quest-assemble.js` — сборка из частей.
 - `quests/freight/` — контракты, `errand.quest` с шаблоном, `deck/`, `errands/`, собранные `*.json`, `VOICE.md` с голосом.
-- `src/freight.js` — экран квеста, мачта, разбор и связка частей; `src/freight-book.js` — книга правил с поиском; `src/freight-port.js` — панель порта без DOM, её читают тесты; `src/freight-about.js` — Impressum, Datenschutz и источники.
+- `src/freight.js` — экран квеста, мачта, разбор и связка частей; `src/freight-book.js` — книга правил с поиском, переходами и типографикой; `src/freight-port.js` — панель порта без DOM, её читают тесты; `src/freight-about.js` — Impressum, Datenschutz и источники.
 - `src/freight-world.js` — порты, переходы, заказы, покупки и правила памяти; `src/freight-chart.js` — карта; `src/freight-sea.js` — вид из рубки; `src/freight-audio.js` — синтезированный фон; `src/freight-practice.js` — огни на переходе.
 - Сохранение: `deelstuff.colreg.freight.v2`. Сброс: кнопка «Начать заново» внизу панели порта, с подтверждением.
 
