@@ -1,17 +1,17 @@
 // The archipelago between quests: ports, passages and what each port offers. Pure data and rules,
 // so the same logic runs in the game and in tools/questlab when it checks every possible trip.
 export const PORTS={
- old:{name:'Старый порт',to:'в Старый порт',blurb:'Контора, лавка Кузьмича и Третий причал. Здесь заказы берут вечером, а отвечают за них утром.',x:176,y:510},
- fish:{name:'Рыбачья слобода',to:'в Рыбачью слободу',blurb:'Сорок дворов, два причала и староста, который помнит всё. Рыбой пахнет даже почта.',x:188,y:196},
+ old:{name:'Старый порт',to:'в Старый порт',blurb:'Контора, лавка Кузьмича и Третий причал. Здесь заказы берут вечером, а отвечают за них утром.',x:204,y:480},
+ fish:{name:'Рыбачья слобода',to:'в Рыбачью слободу',blurb:'Сорок дворов, два причала и староста, который помнит всё. Рыбой пахнет даже почта.',x:204,y:190},
  light:{name:'Северный маяк',to:'на Северный маяк',blurb:'Маяк, смотритель и лучший на Архипелаге вид на чужие ошибки. Суда заходят редко и каждый раз по делу.',x:560,y:132},
  far:{name:'Остров Дальний',to:'на остров Дальний',blurb:'Кафе «Девятый вал», причал для рыбаков и госпожа Тарасюк. Здесь всё узнают к обеду.',x:566,y:506},
 };
 export const EDGES=[
- {a:'old',b:'fish',name:'Прибрежный фарватер',legs:2,deck:['nets','yacht','cross'],via:[92,350]},
- {a:'old',b:'far',name:'Сквозной пролив',legs:3,deck:['tow','tanker','cross'],via:[372,600],scene:'strait'},
- {a:'fish',b:'far',name:'Банка Сорок Чертей',legs:2,deck:['aground','dredge','cross'],via:[390,330]},
- {a:'fish',b:'light',name:'Внешний рейд',legs:2,deck:['nets','yacht','cross'],via:[372,62]},
- {a:'light',b:'far',name:'Восточный рейд',legs:2,deck:['yacht','nets','cross'],via:[668,320]},
+ {a:'old',b:'fish',name:'Прибрежный фарватер',legs:2,deck:['nets','yacht','cross'],via:[[220,434],[214,370],[230,300],[224,232]]},
+ {a:'old',b:'far',name:'Сквозной пролив',legs:3,deck:['tow','tanker','cross'],via:[[258,498],[314,544],[372,562],[432,550],[466,500],[522,482]],scene:'strait'},
+ {a:'fish',b:'far',name:'Банка Сорок Чертей',legs:2,deck:['aground','dredge','cross'],via:[[248,236],[292,304],[332,370],[410,382],[496,424]]},
+ {a:'fish',b:'light',name:'Внешний рейд',legs:2,deck:['nets','yacht','cross'],via:[[250,160],[340,112],[450,98],[520,114]]},
+ {a:'light',b:'far',name:'Восточный рейд',legs:2,deck:['yacht','nets','cross'],via:[[584,196],[640,262],[652,350],[612,444]]},
 ];
 export const edgeBetween=(a,b)=>EDGES.find(e=>(e.a===a&&e.b===b)||(e.a===b&&e.b===a));
 export const neighbours=port=>EDGES.filter(e=>e.a===port||e.b===port).map(edge=>({to:edge.a===port?edge.b:edge.a,edge}));

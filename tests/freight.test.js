@@ -10,7 +10,7 @@ import {visibleLights} from '../src/freight-sea.js';
 import {practiceRound,practiceCheck} from '../src/freight-practice.js';
 import {buildErrand,splice} from '../src/quest-assemble.js';
 import {PORTS,EDGES,UPGRADES,DEATH_NEWS,LOST_SHIP,edgeBetween,neighbours,newWorld,newStore,dealOffers,pickEncounters,settle,forSale,buy,enterWorld,leaveWorld,hearNews,payDebts} from '../src/freight-world.js';
-import {renderChart} from '../src/freight-chart.js';
+import {renderChart,track,onLand} from '../src/freight-chart.js';
 import {CREW,hire,hirable,mate,haggle} from '../src/freight-world.js';
 import {spawnSync} from 'node:child_process';
 import {portPanel} from '../src/freight-port.js';
@@ -284,6 +284,13 @@ test('the world moves with the boat and a wreck goes home',()=>{
  assert.equal(w.money,0);
  assert.ok(DEATH_NEWS.includes(String(LOST_SHIP)));
  assert.deepEqual(neighbours('light').map(n=>n.to).sort(),['far','fish']);
+});
+test('passages keep off land',()=>{
+ for(const e of EDGES){
+  const [a,b]=[PORTS[e.a],PORTS[e.b]],offshore=track(e).filter(p=>Math.min(Math.hypot(p.x-a.x,p.y-a.y),Math.hypot(p.x-b.x,p.y-b.y))>32);
+  assert.ok(offshore.length>20,e.name);
+  for(const p of offshore)assert.ok(!onLand(p.x,p.y,8),`${e.name} at ${p.x.toFixed(0)},${p.y.toFixed(0)}`);
+ }
 });
 test('the chart draws every port and marks only reachable ones',()=>{
  const svg=renderChart('old');
