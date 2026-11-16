@@ -1,7 +1,7 @@
 # CLAUDE.md — Дельный МППСС
 
 A static browser game that teaches COLREG (МППСС) by play: text quests in the style of Space Rangers 2,
-tied together by a chart of ports. No server, no accounts, no neighbouring components. Answer the user in
+tied together by a chart of ports. No server, no accounts; the only neighbour is the shared visit counter (see Contracts). Answer the user in
 Russian. Player-facing text and docs are Russian; code and comments are English.
 
 **This file is an orientation map and a set of rules, not documentation.** It carries what is hard
@@ -75,6 +75,11 @@ Players' saves under `deelstuff.colreg.freight.v2`, and the published URLs. `/` 
 `freight.html` open the game, which also answers `#impressum`, `#datenschutz`, `#sources`, `#rules`,
 `#rule-N` and `#annex-N` for old links and bookmarks. Any other missing path gets `404.html`, which sends
 the visitor to `/`. Nothing else calls this project.
+
+`index.html` loads `site-analytics.js`, which counts visits on colreg.deelstuff.com at stats.deelstuff.com
+(GoatCounter); the collector's health check requests `/site-analytics.js` at the site root every five minutes. It is a byte-for-byte copy from the private `iatsuk/web-analytics` repository and changes only there,
+through its `deploy/sync-tracker.py`. The copy, the collection and the statistics section of the Datenschutz change
+together.
 
 ## Conventions
 

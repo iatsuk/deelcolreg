@@ -13,7 +13,7 @@ await hashDirectory('assets');
 const revision=hash.digest('hex').slice(0,12);
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist', { recursive: true });
-for (const file of [...PAGES, 'favicon.svg', 'src', 'assets', 'quests']) {
+for (const file of [...PAGES, 'favicon.svg', 'site-analytics.js', 'src', 'assets', 'quests']) {
   await cp(file, `dist/${file}`, { recursive: true });
 }
 for(const name of files.filter(name=>name.endsWith('.js'))){
